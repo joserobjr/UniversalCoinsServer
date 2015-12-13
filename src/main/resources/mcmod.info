@@ -1,0 +1,16 @@
+[
+{
+  "modid": "UniversalCoins",
+  "name": "UniversalCoins Server",
+  "description": "",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["joserobjr"],
+  "credits": "",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
