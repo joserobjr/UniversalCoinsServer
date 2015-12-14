@@ -28,7 +28,7 @@ public class TileVendor extends TileEntity implements IInventory
     public static final int SLOT_COIN_OUTPUT = 13;
     public static final int SLOT_OWNER_COIN_INPUT = 14;
     public static final int SLOT_USER_COIN_INPUT = 15;
-    public static final int SLOT_USER_CARD_SLOT = 16;
+    public static final int SLOT_USER_CARD = 16;
     public static final int BUTTON_MODE = 0;
     public static final int BUTTON_COLOR_MINUS = 15;
     public static final int BUTTON_COLOR_PLUS = 16;

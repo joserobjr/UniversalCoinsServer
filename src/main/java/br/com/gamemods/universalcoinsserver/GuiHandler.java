@@ -1,6 +1,8 @@
 package br.com.gamemods.universalcoinsserver;
 
 import br.com.gamemods.universalcoinsserver.container.ContainerVendor;
+import br.com.gamemods.universalcoinsserver.container.ContainerVendorBuy;
+import br.com.gamemods.universalcoinsserver.container.ContainerVendorSell;
 import br.com.gamemods.universalcoinsserver.container.ContainerVendorWrench;
 import br.com.gamemods.universalcoinsserver.tile.TileVendor;
 import cpw.mods.fml.common.network.IGuiHandler;
@@ -39,9 +41,8 @@ public class GuiHandler implements IGuiHandler
                     switch (ID){
                         case GUI_VENDOR_WRENCH: return new ContainerVendorWrench(tile);
                         case GUI_VENDOR_OWNER: return new ContainerVendor(player.inventory, tile);
-                        //case GUI_VENDOR_SELL: return new ContainerVendorSell(player.inventory, tile);
-                        //default: return new ContainerVendorBuy(player.inventory, tile);
-                        default: return null;
+                        case GUI_VENDOR_SELL: return new ContainerVendorSell(player.inventory, tile);
+                        default: return new ContainerVendorBuy(player.inventory, tile);
                     }
                 }
                 else return null;

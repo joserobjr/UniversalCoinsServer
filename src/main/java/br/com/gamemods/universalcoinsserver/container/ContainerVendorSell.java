@@ -7,30 +7,41 @@ import net.minecraft.inventory.Container;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 
-public class ContainerVendor extends Container
+public class ContainerVendorSell extends Container
 {
     private TileVendor tile;
-    private Boolean lastMode;
     private int lastPrice, lastUserCoins, lastOwnerCoins;
 
-    public ContainerVendor(InventoryPlayer playerInventory, TileVendor tile)
+    public ContainerVendorSell(InventoryPlayer inventoryPlayer, TileVendor tile)
     {
         this.tile = tile;
 
-        addSlotToContainer(new SlotGhost(tile, TileVendor.SLOT_TRADE, 9, 17));
-        addSlotToContainer(new SlotCoinInput(tile, TileVendor.SLOT_OWNER_COIN_INPUT, 35, 55));
-        addSlotToContainer(new SlotCard(tile, TileVendor.SLOT_CARD, 17, 55));
-        addSlotToContainer(new SlotOutput(tile, TileVendor.SLOT_COIN_OUTPUT, 152, 55));
-
-        for (int i = 0; i < 9; i++)
-            addSlotToContainer(new Slot(tile, i, 8 + i * 18, 96));
+        addSlotToContainer(new SlotReadOnly(tile, TileVendor.SLOT_TRADE, 35, 24));
+        addSlotToContainer(new SlotOutput(tile, TileVendor.SLOT_OUTPUT, 152, 24));
+        addSlotToContainer(new SlotCard(tile, TileVendor.SLOT_USER_CARD, 17, 57));
+        addSlotToContainer(new SlotCoinInput(tile, TileVendor.SLOT_USER_COIN_INPUT, 35, 57));
+        addSlotToContainer(new SlotOutput(tile, TileVendor.SLOT_COIN_OUTPUT, 152, 57));
 
         for (int i = 0; i < 3; i++)
             for (int j = 0; j < 9; j++)
-                addSlotToContainer(new Slot(playerInventory, j + i * 9 + 9, 8 + j * 18, 119 + i * 18));
+                addSlotToContainer(new Slot(inventoryPlayer, j + i * 9 + 9, 8 + j * 18, 108 + i * 18));
 
         for (int i = 0; i < 9; i++)
-            addSlotToContainer(new Slot(playerInventory, i, 8 + i * 18, 177));
+            addSlotToContainer(new Slot(inventoryPlayer, i, 8 + i * 18, 166));
+    }
+
+    @Override
+    public void detectAndSendChanges()
+    {
+        super.detectAndSendChanges();
+
+        if (lastPrice != tile.price || lastUserCoins != tile.userCoins || lastOwnerCoins != tile.ownerCoins)
+        {
+            tile.scheduleUpdate();
+            lastPrice = tile.price;
+            lastUserCoins = tile.userCoins;
+            lastOwnerCoins = tile.ownerCoins;
+        }
     }
 
     @Override
@@ -51,9 +62,9 @@ public class ContainerVendor extends Container
             stack = stackInSlot.copy();
 
             // merges the item into player inventory since its in the tileEntity
-            if (slot < 13)
+            if (slot < 5)
             {
-                if (!this.mergeItemStack(stackInSlot, 13, 49, true))
+                if (!this.mergeItemStack(stackInSlot, 5, 41, true))
                 {
                     return null;
                 }
@@ -63,9 +74,8 @@ public class ContainerVendor extends Container
             else
             {
                 boolean foundSlot = false;
-                for (int i = 1; i < 13; i++) // we start at 1 to avoid shift
+                for (int i = 0; i < 5; i++)
                 {
-                    // clicking into trade slot
                     if (((Slot) inventorySlots.get(i)).isItemValid(stackInSlot)
                             && this.mergeItemStack(stackInSlot, i, i + 1, false))
                     {
@@ -95,22 +105,6 @@ public class ContainerVendor extends Container
         }
 
         return stack;
-    }
-
-    @Override
-    public void detectAndSendChanges()
-    {
-        super.detectAndSendChanges();
-
-        if (lastMode == null || lastMode != tile.sellMode
-                || lastUserCoins != tile.userCoins || lastOwnerCoins != tile.ownerCoins || lastPrice != tile.price)
-        {
-            tile.scheduleUpdate();
-            lastMode = tile.sellMode;
-            lastUserCoins = tile.userCoins;
-            lastOwnerCoins = tile.ownerCoins;
-            lastPrice = tile.price;
-        }
     }
 
     @Override

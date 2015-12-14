@@ -70,7 +70,7 @@ public class BlockVendor extends BlockContainer
             open = GuiHandler.GUI_VENDOR_WRENCH;
         else if(player.getPersistentID().equals(tile.owner))
             open = GuiHandler.GUI_VENDOR_OWNER;
-        else if(tile.price <= 0)
+        else if(tile.price <= 0 || tile.getStackInSlot(TileVendor.SLOT_TRADE) == null)
             return false;
         else if(tile.sellMode)
             open = GuiHandler.GUI_VENDOR_SELL;
