@@ -36,9 +36,11 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
     public static final int SLOT_USER_COIN_INPUT = 15;
     public static final int SLOT_USER_CARD = 16;
     public static final int BUTTON_MODE = 0;
-    public static final int BUTTON_OWNER_COIN=3;
+    public static final int BUTTON_OWNER_COIN = 3;
     public static final int BUTTON_OWNER_LARGE_BAG = 7;
-    public static final int BUTTON_USER_COIN=10;
+    public static final int BUTTON_SELL = 8;
+    public static final int BUTTON_BUY = 9;
+    public static final int BUTTON_USER_COIN = 10;
     public static final int BUTTON_USER_LARGE_BAG = 14;
     public static final int BUTTON_COLOR_MINUS = 15;
     public static final int BUTTON_COLOR_PLUS = 16;
@@ -492,6 +494,10 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
             case BUTTON_COLOR_PLUS:
                 if(!player.getPersistentID().equals(owner))
                     return;
+            case BUTTON_BUY:
+            case BUTTON_SELL:
+                if(player.getPersistentID().equals(owner))
+                    return;
         }
 
         if(buttonId >= BUTTON_OWNER_COIN && buttonId <= BUTTON_OWNER_LARGE_BAG)
@@ -503,6 +509,13 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         {
             if(player.getPersistentID().equals(owner))
                 return;
+        }
+
+        if(buttonId == BUTTON_BUY && !buyButtonActive
+            || buttonId == BUTTON_SELL && !sellButtonActive)
+        {
+            scheduleUpdate();
+            return;
         }
 
         // Action
@@ -528,12 +541,110 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
                     textColor = 0;
                 updateBlocks();
                 scheduleUpdate();
+                return;
+
+            case BUTTON_BUY:
+                buy(shiftPressed);
+                return;
         }
 
         if(buttonId >= BUTTON_OWNER_COIN && buttonId <= BUTTON_OWNER_LARGE_BAG)
             withdraw(buttonId - BUTTON_OWNER_COIN, SLOT_COIN_OUTPUT, shiftPressed, true);
         else if(buttonId >= BUTTON_USER_COIN && buttonId <= BUTTON_USER_LARGE_BAG)
             withdraw(buttonId - BUTTON_USER_COIN, SLOT_COIN_OUTPUT, shiftPressed, false);
+    }
+
+    public void buy(boolean all)
+    {
+        ItemStack trade = inventory[SLOT_TRADE];
+        if(trade == null || trade.stackSize <= 0)
+        {
+            buyButtonActive = false;
+            scheduleUpdate();
+            return;
+        }
+
+        if(userCoins < price)
+        {
+            buyButtonActive = false;
+            scheduleUpdate();
+            return;
+        }
+
+        ItemStack output = inventory[SLOT_OUTPUT];
+        if(output != null)
+        {
+            if (output.getItem() != trade.getItem() || output.getItemDamage() != trade.getItemDamage()
+                    || !ItemStack.areItemStackTagsEqual(output, trade) || output.stackSize + trade.stackSize > output.getMaxStackSize())
+            {
+                buyButtonActive = false;
+                scheduleUpdate();
+                return;
+            }
+        }
+
+        if(!infinite)
+        {
+            List<ItemStack> subtraction = new ArrayList<>(SLOT_STORAGE_LAST - SLOT_STORAGE_FIST);
+            int found = 0;
+            for(int i = SLOT_STORAGE_FIST; i <= SLOT_STORAGE_LAST; i++)
+            {
+                ItemStack stack = inventory[i];
+                if(stack != null && (stack.getItem() == trade.getItem() && stack.getItemDamage() == trade.getItemDamage()
+                        && stack.stackSize > 0 && ItemStack.areItemStackTagsEqual(stack, trade)))
+                {
+                    subtraction.add(stack);
+                    found += stack.stackSize;
+                }
+            }
+
+            if(found < trade.stackSize)
+            {
+                updateOperations();
+                return;
+            }
+
+            found = trade.stackSize;
+
+            for(ItemStack stack: subtraction)
+            {
+                if(stack.stackSize >= found)
+                {
+                    stack.stackSize -= found;
+                    break;
+                }
+
+                found -= stack.stackSize;
+                stack.stackSize = 0;
+                if(found == 0)
+                    break;
+            }
+
+            for(int i = SLOT_STORAGE_FIST; i <= SLOT_STORAGE_LAST; i++)
+            {
+                ItemStack stack = inventory[i];
+                if (stack != null && stack.stackSize <= 0)
+                    inventory[i] = null;
+            }
+        }
+
+        if(output != null)
+        {
+            output.stackSize++;
+            userCoins-=price;
+            if(!infinite)
+                ownerCoins += price;
+        }
+        else
+        {
+            inventory[SLOT_OUTPUT] = trade.copy();
+            userCoins -= price;
+            if(!infinite)
+                ownerCoins += price;
+        }
+
+        validateFields();
+        scheduleUpdate();
     }
 
     public void withdraw(int multiplier, int slot, boolean all, boolean fromOwner)
@@ -641,7 +752,17 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         }
 
         sellButtonActive = !sellToUser && !outOfInventorySpace && !outOfCoins;
-        buyButtonActive = sellToUser && !outOfStock;
+        buyButtonActive = sellToUser && !outOfStock && userCoins >= price;
+
+        if(buyButtonActive)
+        {
+            ItemStack output = inventory[SLOT_OUTPUT];
+            if(output != null && (output.getItem() != trade.getItem() || output.getItemDamage() != trade.getItemDamage()
+                    || !ItemStack.areItemStackTagsEqual(output, trade) || output.stackSize+trade.stackSize > output.getMaxStackSize()))
+            {
+                buyButtonActive = false;
+            }
+        }
 
         if(stateHashcode() != hashcode)
         {
