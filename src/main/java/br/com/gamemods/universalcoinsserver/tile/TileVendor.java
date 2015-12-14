@@ -164,7 +164,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         NBTTagCompound nbt = new NBTTagCompound();
         writeToNBT(nbt);
         NBTTagList tagList = nbt.getTagList("Inventory", Constants.NBT.TAG_COMPOUND);
-        List<Byte> slots = new ArrayList<Byte>(inventory.length);
+        List<Byte> slots = new ArrayList<>(inventory.length);
         for (int i = 0; i < tagList.tagCount(); i++)
         {
             NBTTagCompound tag = tagList.getCompoundTagAt(i);
@@ -288,6 +288,14 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         }
     }
 
+    public void setCoins(int coins, boolean owner)
+    {
+        if(owner)
+            setOwnerCoins(coins);
+        else
+            setUserCoins(coins);
+    }
+
     public void setOwnerCoins(int ownerCoins)
     {
         this.ownerCoins = ownerCoins;
@@ -317,7 +325,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         for(int i = 0; i < buttons.length; i++)
         {
 
-            buttons[i] = current >= value && (coin == null || (coin.getValue() == value && stack.stackSize < coin.getMaxStackSize()));
+            buttons[i] = current >= value && (coin == null || (coin.getValue() == value && stack.stackSize < stack.getMaxStackSize()));
             value *= 9;
         }
 
@@ -533,7 +541,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         int value = item.getValue();
 
         ItemStack stack = inventory[slot];
-        if(stack != null && (stack.getItem() != item || stack.stackSize >= item.getMaxStackSize()
+        if(stack != null && (stack.getItem() != item || stack.stackSize >= stack.getMaxStackSize()
             || balance < value))
         {
             updateWithdrawButtons(fromOwner);
@@ -546,13 +554,36 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
             if(stack != null) stack.stackSize++;
             else setInventorySlotContents(slot, new ItemStack(item));
 
-            if(fromOwner)
-                setOwnerCoins(balance);
-            else
-                setUserCoins(balance);
-            scheduleUpdate();
-            return;
+            setCoins(balance, fromOwner);
         }
+        else
+        {
+            if(stack == null)
+            {
+                int amount = balance / value;
+                stack = new ItemStack(item);
+                int maxStackSize = stack.getMaxStackSize();
+                if (amount > maxStackSize)
+                    amount = maxStackSize;
+
+                balance -= value * amount;
+                stack.stackSize = amount;
+
+                inventory[slot] = stack;
+                setCoins(balance, fromOwner);
+            }
+            else
+            {
+                int amount = Math.min(balance / value, stack.getMaxStackSize() - stack.stackSize);
+
+                balance -= value * amount;
+                stack.stackSize += amount;
+
+                setCoins(balance, fromOwner);
+            }
+        }
+
+        scheduleUpdate();
     }
 
     private void updateWithdrawButtons(boolean fromOwner)
