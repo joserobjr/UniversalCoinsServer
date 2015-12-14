@@ -30,6 +30,8 @@ public class TileVendor extends TileEntity implements IInventory
     public static final int SLOT_USER_COIN_INPUT = 15;
     public static final int SLOT_USER_CARD_SLOT = 16;
     public static final int BUTTON_MODE = 0;
+    public static final int BUTTON_COLOR_MINUS = 15;
+    public static final int BUTTON_COLOR_PLUS = 16;
 
     private ItemStack[] inventory = new ItemStack[17];
 
@@ -40,6 +42,7 @@ public class TileVendor extends TileEntity implements IInventory
     public int price;
     public boolean infinite;
     public boolean sellMode;
+    public byte textColor;
 
     public void validateFields()
     {
@@ -95,7 +98,7 @@ public class TileVendor extends TileEntity implements IInventory
         compound.setBoolean("UserLargeBagButtonActive", false);
         compound.setBoolean("InUse", false);
         compound.setString("BlockIcon", "");
-        compound.setInteger("TextColor", 0);
+        compound.setInteger("TextColor", textColor);
         compound.setInteger("remoteX", 0);
         compound.setInteger("remoteY", 0);
         compound.setInteger("remoteZ", 0);
@@ -135,6 +138,7 @@ public class TileVendor extends TileEntity implements IInventory
         price = compound.getInteger("ItemPrice");
         infinite = compound.getBoolean("Infinite");
         sellMode = compound.getBoolean("Mode");
+        textColor = (byte) compound.getInteger("TextColor");
 
         validateFields();
     }
@@ -276,14 +280,40 @@ public class TileVendor extends TileEntity implements IInventory
 
     public void onButtonPressed(EntityPlayerMP player, int buttonId, boolean shiftPressed)
     {
+        // Security check
         switch (buttonId)
         {
             case BUTTON_MODE:
-            {
-                if(player.getPersistentID().equals(owner))
-                    onModeButtonPressed();
+            case BUTTON_COLOR_MINUS:
+            case BUTTON_COLOR_PLUS:
+                if(!player.getPersistentID().equals(owner))
+                    return;
+        }
+
+        // Action
+        switch (buttonId)
+        {
+            case BUTTON_MODE:
+                onModeButtonPressed();
                 return;
-            }
+
+            case BUTTON_COLOR_MINUS:
+                if(textColor > 0)
+                    textColor--;
+                else
+                    textColor = 15;
+                updateBlocks();
+                scheduleUpdate();
+                return;
+
+            case BUTTON_COLOR_PLUS:
+                if(textColor < 15)
+                    textColor++;
+                else
+                    textColor = 0;
+                updateBlocks();
+                scheduleUpdate();
+                return;
         }
     }
 
