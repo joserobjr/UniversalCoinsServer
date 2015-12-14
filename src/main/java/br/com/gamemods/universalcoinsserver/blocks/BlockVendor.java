@@ -72,7 +72,7 @@ public class BlockVendor extends BlockContainer
             open = GuiHandler.GUI_VENDOR_OWNER;
         else if(tile.price <= 0 || tile.getStackInSlot(TileVendor.SLOT_TRADE) == null)
             return false;
-        else if(tile.sellMode)
+        else if(tile.sellToUser)
             open = GuiHandler.GUI_VENDOR_SELL;
         else
             open = GuiHandler.GUI_VENDOR_BUY;
@@ -86,7 +86,7 @@ public class BlockVendor extends BlockContainer
         player.openGui(UniversalCoinsServer.instance, open, world, x, y, z);
         if(!(player.openContainer instanceof ContainerPlayer))
         {
-            tile.opener = player;
+            tile.setOpener(player);
             tile.scheduleUpdate();
         }
 

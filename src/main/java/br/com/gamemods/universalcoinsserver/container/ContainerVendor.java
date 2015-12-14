@@ -102,11 +102,11 @@ public class ContainerVendor extends Container
     {
         super.detectAndSendChanges();
 
-        if (lastMode == null || lastMode != tile.sellMode
+        if (lastMode == null || lastMode != tile.sellToUser
                 || lastUserCoins != tile.userCoins || lastOwnerCoins != tile.ownerCoins || lastPrice != tile.price)
         {
             tile.scheduleUpdate();
-            lastMode = tile.sellMode;
+            lastMode = tile.sellToUser;
             lastUserCoins = tile.userCoins;
             lastOwnerCoins = tile.ownerCoins;
             lastPrice = tile.price;

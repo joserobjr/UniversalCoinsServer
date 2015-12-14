@@ -53,10 +53,10 @@ public class GuiHandler implements IGuiHandler
             TileVendor tile = (TileVendor) te;
             if (tile.owner == null || player.getPersistentID().equals(tile.owner))
                 return new ContainerVendor(player.inventory, tile);
-            /*else if (tile.sellMode)
+            else if (tile.sellToUser)
                 return new ContainerVendorSell(player.inventory, tile);
             else
-                return new ContainerVendorBuy(player.inventory, tile);*/
+                return new ContainerVendorBuy(player.inventory, tile);
         }
         return null;
     }

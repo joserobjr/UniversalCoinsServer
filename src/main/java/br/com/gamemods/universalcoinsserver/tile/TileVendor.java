@@ -51,11 +51,12 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
     public int userCoins;
     public int price;
     public boolean infinite;
-    public boolean sellMode;
+    public boolean sellToUser;
     public byte textColor;
     public EntityPlayer opener;
     private boolean[] buttonOwnerWithdraw = new boolean[5];
     private boolean[] buttonUserWithdraw = new boolean[5];
+    private boolean outOfStock, outOfInventorySpace, buyButtonActive, sellButtonActive, outOfCoins;
 
     public void validateFields()
     {
@@ -64,6 +65,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         if(price < 0) price = 0;
         updateWithdrawButtons(true);
         updateWithdrawButtons(false);
+        updateOperations();
     }
 
     @Override
@@ -95,12 +97,12 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         if(owner != null)
             compound.setString("BlockOwner", owner.toString());
         compound.setBoolean("Infinite", infinite);
-        compound.setBoolean("Mode", sellMode);
-        compound.setBoolean("OutOfStock", false);
-        compound.setBoolean("OutOfCoins", false);
-        compound.setBoolean("InventoryFull", false);
-        compound.setBoolean("BuyButtonActive", false);
-        compound.setBoolean("SellButtonActive", false);
+        compound.setBoolean("Mode", sellToUser);
+        compound.setBoolean("OutOfStock", outOfStock);
+        compound.setBoolean("OutOfCoins", outOfCoins);
+        compound.setBoolean("InventoryFull", outOfInventorySpace);
+        compound.setBoolean("BuyButtonActive", buyButtonActive);
+        compound.setBoolean("SellButtonActive", sellButtonActive);
         compound.setBoolean("CoinButtonActive", buttonOwnerWithdraw[0]);
         compound.setBoolean("SmallStackButtonActive", buttonOwnerWithdraw[1]);
         compound.setBoolean("LargeStackButtonActive", buttonOwnerWithdraw[2]);
@@ -152,7 +154,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         userCoins = compound.getInteger("UserCoinSum");
         price = compound.getInteger("ItemPrice");
         infinite = compound.getBoolean("Infinite");
-        sellMode = compound.getBoolean("Mode");
+        sellToUser = compound.getBoolean("Mode");
         textColor = (byte) compound.getInteger("TextColor");
 
         validateFields();
@@ -586,6 +588,68 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         scheduleUpdate();
     }
 
+    private int stateHashcode()
+    {
+        return Arrays.hashCode(new boolean[]{sellToUser, outOfCoins, outOfStock, outOfInventorySpace, buyButtonActive, sellButtonActive});
+    }
+
+    private void updateOperations()
+    {
+        int hashcode = stateHashcode();
+        ItemStack trade = inventory[SLOT_TRADE];
+        outOfCoins = !infinite && !sellToUser && ownerCoins < price;
+        if(trade == null)
+        {
+            outOfStock = true;
+            outOfInventorySpace = false;
+            if(stateHashcode() != hashcode)
+            {
+                scheduleUpdate();
+                updateBlocks();
+            }
+            return;
+        }
+
+        if(!infinite)
+        {
+            outOfStock = true;
+            outOfInventorySpace = true;
+            int foundItems = 0;
+            for(int i = SLOT_STORAGE_FIST; i <= SLOT_STORAGE_LAST; i++)
+            {
+                ItemStack stack = inventory[i];
+                if(stack == null)
+                {
+                    outOfInventorySpace = false;
+                }
+                else if(stack.getItem() == trade.getItem() && stack.getItemDamage() == trade.getItemDamage() && ItemStack.areItemStackTagsEqual(stack, trade))
+                {
+                    if(stack.stackSize < stack.getMaxStackSize())
+                        outOfInventorySpace = false;
+                    if(stack.stackSize > 0)
+                        foundItems += stack.stackSize;
+                }
+            }
+
+            if(foundItems >= trade.stackSize)
+                outOfStock = false;
+        }
+        else
+        {
+            outOfStock = false;
+            outOfInventorySpace = false;
+        }
+
+        sellButtonActive = !sellToUser && !outOfInventorySpace && !outOfCoins;
+        buyButtonActive = sellToUser && !outOfStock;
+
+        if(stateHashcode() != hashcode)
+        {
+            scheduleUpdate();
+            updateBlocks();
+        }
+    }
+
     private void updateWithdrawButtons(boolean fromOwner)
     {
         if(fromOwner)
@@ -596,7 +660,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
 
     public void onModeButtonPressed()
     {
-        sellMode = !sellMode;
+        sellToUser = !sellToUser;
         updateBlocks();
     }
 
@@ -625,5 +689,11 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
     public UUID getOwnerId()
     {
         return owner;
+    }
+
+    public void setOpener(EntityPlayer opener)
+    {
+        this.opener = opener;
+        updateOperations();
     }
 }
