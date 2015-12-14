@@ -494,6 +494,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
             case BUTTON_COLOR_PLUS:
                 if(!player.getPersistentID().equals(owner))
                     return;
+                break;
             case BUTTON_BUY:
             case BUTTON_SELL:
                 if(player.getPersistentID().equals(owner))
@@ -583,10 +584,10 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
             }
         }
 
+        int found = 0;
+        List<ItemStack> subtraction = new ArrayList<>(SLOT_STORAGE_LAST - SLOT_STORAGE_FIST);
         if(!infinite)
         {
-            List<ItemStack> subtraction = new ArrayList<>(SLOT_STORAGE_LAST - SLOT_STORAGE_FIST);
-            int found = 0;
             for(int i = SLOT_STORAGE_FIST; i <= SLOT_STORAGE_LAST; i++)
             {
                 ItemStack stack = inventory[i];
@@ -603,8 +604,46 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
                 updateOperations();
                 return;
             }
+        }
 
-            found = trade.stackSize;
+        int quantity = 1;
+        if(all && trade.stackSize * 2 <= trade.getMaxStackSize())
+        {
+            if(output == null)
+            {
+                if(trade.getMaxStackSize() * price / trade.stackSize <= userCoins)
+                {
+                    // buy as many as will fit in a stack
+                    quantity = trade.getMaxStackSize() / trade.stackSize;
+                }
+                else
+                {
+                    // buy as many as i have coins for.
+                    quantity = userCoins / price;
+                }
+            }
+            else
+            {
+                if((output.getMaxStackSize() - output.stackSize) * price <= userCoins)
+                {
+                    // buy as much as i can fit in a stack since we have enough
+                    // coins
+                    quantity = (trade.getMaxStackSize() - output.stackSize) / output.stackSize;
+                }
+                else
+                {
+                    // buy as many as possible with available coins.
+                    quantity = userCoins / price;
+                }
+            }
+
+            if(quantity <= 0)
+                return;
+        }
+
+        if(!infinite)
+        {
+            found = trade.stackSize * quantity;
 
             for(ItemStack stack: subtraction)
             {
@@ -630,17 +669,19 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
 
         if(output != null)
         {
-            output.stackSize++;
-            userCoins-=price;
+            output.stackSize += trade.stackSize * quantity;
+            userCoins-= price * quantity;
             if(!infinite)
-                ownerCoins += price;
+                ownerCoins += price * quantity;
         }
         else
         {
-            inventory[SLOT_OUTPUT] = trade.copy();
-            userCoins -= price;
+            ItemStack copy = trade.copy();
+            copy.stackSize *= quantity;
+            inventory[SLOT_OUTPUT] = copy;
+            userCoins -= price * quantity;
             if(!infinite)
-                ownerCoins += price;
+                ownerCoins += price * quantity;
         }
 
         validateFields();
