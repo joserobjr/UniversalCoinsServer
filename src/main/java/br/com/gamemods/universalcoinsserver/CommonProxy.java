@@ -33,8 +33,8 @@ public class CommonProxy
     public Block blockTradeStation, blockVendor, blockVendorFrame, blockCardStation, blockBase, blockSafe,
             blockStandingAdvSign, blockWallAdvSign, blockSlots, blockSignal, blockPackager, blockPowerBase, blockPowerReceiver;
 
-    public Item itemCoin, itemSmallCoinStack, itemLargeCoinStack, itemSmallCoinBag, itemLargeCoinBag, itemCard,
-            itemEnderCard, itemSeller, itemVendorWrench, itemAdvSign, itemLinkCard, itemPackage;
+    public ItemCoin itemCoin, itemSmallCoinStack, itemLargeCoinStack, itemSmallCoinBag, itemLargeCoinBag;
+    public Item itemCard, itemEnderCard, itemSeller, itemVendorWrench, itemAdvSign, itemLinkCard, itemPackage;
 
     public CreativeTabs tabUniversalCoin = new CreativeTabs("tabUniversalCoins")
     {
@@ -44,6 +44,7 @@ public class CommonProxy
             return Item.getItemFromBlock(blockTradeStation);
         }
     };
+    public ItemCoin[] coins;
 
     public void loadConfig()
     {
@@ -70,19 +71,20 @@ public class CommonProxy
 
     public void registerItems()
     {
-        itemCoin = new ItemCoin(1).setUnlocalizedName("itemCoin").setCreativeTab(tabUniversalCoin);
-        itemSmallCoinStack = new ItemCoin(9).setUnlocalizedName("itemSmallCoinStack").setCreativeTab(tabUniversalCoin);
-        itemLargeCoinStack = new ItemCoin(9*9).setUnlocalizedName("itemLargeCoinStack").setCreativeTab(tabUniversalCoin);
-        itemSmallCoinBag = new ItemCoin(9*9*9).setUnlocalizedName("itemSmallCoinBag").setCreativeTab(tabUniversalCoin);
-        itemLargeCoinBag = new ItemCoin(9*9*9*9).setUnlocalizedName("itemLargeCoinBag").setCreativeTab(tabUniversalCoin);
+        itemCoin = (ItemCoin) new ItemCoin(1).setUnlocalizedName("itemCoin").setCreativeTab(tabUniversalCoin);
+        itemSmallCoinStack = (ItemCoin) new ItemCoin(9).setUnlocalizedName("itemSmallCoinStack").setCreativeTab(tabUniversalCoin);
+        itemLargeCoinStack = (ItemCoin) new ItemCoin(9*9).setUnlocalizedName("itemLargeCoinStack").setCreativeTab(tabUniversalCoin);
+        itemSmallCoinBag = (ItemCoin) new ItemCoin(9*9*9).setUnlocalizedName("itemSmallCoinBag").setCreativeTab(tabUniversalCoin);
+        itemLargeCoinBag = (ItemCoin) new ItemCoin(9*9*9*9).setUnlocalizedName("itemLargeCoinBag").setCreativeTab(tabUniversalCoin);
         itemCard = new ItemCard(tabUniversalCoin);
         itemEnderCard = new ItemEnderCard(tabUniversalCoin);
         itemSeller = new Item().setUnlocalizedName("itemSeller").setCreativeTab(tabUniversalCoin).setMaxStackSize(1);
-
         itemVendorWrench = new ItemVendorWrench(tabUniversalCoin);
         itemAdvSign = new ItemAdvSign(tabUniversalCoin);
         itemLinkCard = new ItemLinkCard(tabUniversalCoin);
         itemPackage = new ItemPackage(tabUniversalCoin);
+
+        coins = new ItemCoin[]{itemCoin, itemSmallCoinStack, itemLargeCoinStack, itemSmallCoinBag, itemLargeCoinBag};
 
         GameRegistry.registerItem(itemCoin, itemCoin.getUnlocalizedName());
         GameRegistry.registerItem(itemSmallCoinStack, itemSmallCoinStack.getUnlocalizedName());

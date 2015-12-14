@@ -14,4 +14,9 @@ public class ItemCoin extends Item
     {
         return value;
     }
+
+    public int getMaxStackSize()
+    {
+        return maxStackSize;
+    }
 }

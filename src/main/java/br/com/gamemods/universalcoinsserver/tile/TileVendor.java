@@ -19,6 +19,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraftforge.common.util.Constants;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,6 +36,10 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
     public static final int SLOT_USER_COIN_INPUT = 15;
     public static final int SLOT_USER_CARD = 16;
     public static final int BUTTON_MODE = 0;
+    public static final int BUTTON_OWNER_COIN=3;
+    public static final int BUTTON_OWNER_LARGE_BAG = 7;
+    public static final int BUTTON_USER_COIN=10;
+    public static final int BUTTON_USER_LARGE_BAG = 14;
     public static final int BUTTON_COLOR_MINUS = 15;
     public static final int BUTTON_COLOR_PLUS = 16;
 
@@ -49,12 +54,16 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
     public boolean sellMode;
     public byte textColor;
     public EntityPlayer opener;
+    private boolean[] buttonOwnerWithdraw = new boolean[5];
+    private boolean[] buttonUserWithdraw = new boolean[5];
 
     public void validateFields()
     {
         if(ownerCoins < 0) ownerCoins = 0;
         if(userCoins < 0) userCoins = 0;
         if(price < 0) price = 0;
+        updateWithdrawButtons(true);
+        updateWithdrawButtons(false);
     }
 
     @Override
@@ -92,16 +101,16 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         compound.setBoolean("InventoryFull", false);
         compound.setBoolean("BuyButtonActive", false);
         compound.setBoolean("SellButtonActive", false);
-        compound.setBoolean("CoinButtonActive", false);
-        compound.setBoolean("SmallStackButtonActive", false);
-        compound.setBoolean("LargeStackButtonActive", false);
-        compound.setBoolean("SmallBagButtonActive", false);
-        compound.setBoolean("LargeBagButtonActive", false);
-        compound.setBoolean("UserCoinButtonActive", false);
-        compound.setBoolean("UserSmallStackButtonActive", false);
-        compound.setBoolean("UserLargeStackButtonActive", false);
-        compound.setBoolean("UserSmallBagButtonActive", false);
-        compound.setBoolean("UserLargeBagButtonActive", false);
+        compound.setBoolean("CoinButtonActive", buttonOwnerWithdraw[0]);
+        compound.setBoolean("SmallStackButtonActive", buttonOwnerWithdraw[1]);
+        compound.setBoolean("LargeStackButtonActive", buttonOwnerWithdraw[2]);
+        compound.setBoolean("SmallBagButtonActive", buttonOwnerWithdraw[3]);
+        compound.setBoolean("LargeBagButtonActive", buttonOwnerWithdraw[4]);
+        compound.setBoolean("UserCoinButtonActive", buttonUserWithdraw[0]);
+        compound.setBoolean("UserSmallStackButtonActive", buttonUserWithdraw[1]);
+        compound.setBoolean("UserLargeStackButtonActive", buttonUserWithdraw[2]);
+        compound.setBoolean("UserSmallBagButtonActive", buttonUserWithdraw[3]);
+        compound.setBoolean("UserLargeBagButtonActive", buttonUserWithdraw[4]);
         compound.setBoolean("InUse", opener != null);
         compound.setString("BlockIcon", "");
         compound.setInteger("TextColor", textColor);
@@ -267,8 +276,8 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
                         current += depositValue;
                     }
 
-                    if(owner) ownerCoins = current;
-                    else userCoins = current;
+                    if(owner) setOwnerCoins(current);
+                    else setUserCoins(current);
 
                     inventory[slot].stackSize -= depositAmount;
                     if (inventory[slot].stackSize == 0)
@@ -277,6 +286,43 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
                 break;
             }
         }
+    }
+
+    public void setOwnerCoins(int ownerCoins)
+    {
+        this.ownerCoins = ownerCoins;
+        updateWithdrawButtons(true);
+    }
+
+    public void setUserCoins(int userCoins)
+    {
+        this.userCoins = userCoins;
+        updateWithdrawButtons(false);
+    }
+
+    public void updateWithdrawButtons(int current, int slot, boolean[] buttons)
+    {
+        int hash = Arrays.hashCode(buttons);
+        if(current < 1)
+        {
+            Arrays.fill(buttons, false);
+            if(hash != Arrays.hashCode(buttons))
+                scheduleUpdate();
+            return;
+        }
+
+        int value = 1;
+        ItemStack stack = inventory[slot];
+        ItemCoin coin = (stack != null && stack.getItem() instanceof ItemCoin)? (ItemCoin) stack.getItem() : null;
+        for(int i = 0; i < buttons.length; i++)
+        {
+
+            buttons[i] = current >= value && (coin == null || (coin.getValue() == value && stack.stackSize < coin.getMaxStackSize()));
+            value *= 9;
+        }
+
+        if(hash != Arrays.hashCode(buttons))
+            scheduleUpdate();
     }
 
     private boolean checkEnderCardAcceptDeposit(int cardSlot, int depositAmount)
@@ -417,7 +463,8 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
 
     public void scheduleUpdate()
     {
-        worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+        if(worldObj != null)
+            worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
     }
 
     public void updateBlocks()
@@ -435,6 +482,17 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
             case BUTTON_COLOR_PLUS:
                 if(!player.getPersistentID().equals(owner))
                     return;
+        }
+
+        if(buttonId >= BUTTON_OWNER_COIN && buttonId <= BUTTON_OWNER_LARGE_BAG)
+        {
+            if(!player.getPersistentID().equals(owner))
+                return;
+        }
+        else if(buttonId >= BUTTON_USER_COIN && buttonId <= BUTTON_USER_LARGE_BAG)
+        {
+            if(player.getPersistentID().equals(owner))
+                return;
         }
 
         // Action
@@ -461,6 +519,48 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
                 updateBlocks();
                 scheduleUpdate();
         }
+
+        if(buttonId >= BUTTON_OWNER_COIN && buttonId <= BUTTON_OWNER_LARGE_BAG)
+            withdraw(buttonId - BUTTON_OWNER_COIN, SLOT_COIN_OUTPUT, shiftPressed, true);
+        else if(buttonId >= BUTTON_USER_COIN && buttonId <= BUTTON_USER_LARGE_BAG)
+            withdraw(buttonId - BUTTON_USER_COIN, SLOT_COIN_OUTPUT, shiftPressed, false);
+    }
+
+    public void withdraw(int multiplier, int slot, boolean all, boolean fromOwner)
+    {
+        ItemCoin item = UniversalCoinsServer.proxy.coins[multiplier];
+        int balance = fromOwner? ownerCoins : userCoins;
+        int value = item.getValue();
+
+        ItemStack stack = inventory[slot];
+        if(stack != null && (stack.getItem() != item || stack.stackSize >= item.getMaxStackSize()
+            || balance < value))
+        {
+            updateWithdrawButtons(fromOwner);
+            return;
+        }
+
+        if(!all)
+        {
+            balance -= value;
+            if(stack != null) stack.stackSize++;
+            else setInventorySlotContents(slot, new ItemStack(item));
+
+            if(fromOwner)
+                setOwnerCoins(balance);
+            else
+                setUserCoins(balance);
+            scheduleUpdate();
+            return;
+        }
+    }
+
+    private void updateWithdrawButtons(boolean fromOwner)
+    {
+        if(fromOwner)
+            updateWithdrawButtons(ownerCoins, SLOT_COIN_OUTPUT, buttonOwnerWithdraw);
+        else
+            updateWithdrawButtons(userCoins, SLOT_COIN_OUTPUT, buttonUserWithdraw);
     }
 
     public void onModeButtonPressed()
