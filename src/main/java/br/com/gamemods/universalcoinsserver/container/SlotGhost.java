@@ -23,7 +23,10 @@ public class SlotGhost extends Slot
     public boolean isItemValid(ItemStack stack)
     {
         if(stack != null)
+        {
+            putStack(null);
             putStack(stack.copy());
+        }
         else
             putStack(null);
 

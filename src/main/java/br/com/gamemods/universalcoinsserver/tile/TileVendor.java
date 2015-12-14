@@ -1,6 +1,7 @@
 package br.com.gamemods.universalcoinsserver.tile;
 
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -11,23 +12,46 @@ import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraftforge.common.util.Constants;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class TileVendor extends TileEntity implements IInventory
 {
+    public static final int SLOT_STORAGE_FIST = 0;
+    public static final int SLOT_STORAGE_LAST = 8;
     public static final int SLOT_TRADE = 9;
-    public static final int SLOT_COIN_INPUT = 14;
     public static final int SLOT_CARD = 10;
+    public static final int SLOT_SELL = 11;
+    public static final int SLOT_OUTPUT = 12;
     public static final int SLOT_COIN_OUTPUT = 13;
+    public static final int SLOT_OWNER_COIN_INPUT = 14;
+    public static final int SLOT_USER_COIN_INPUT = 15;
+    public static final int SLOT_USER_CARD_SLOT = 16;
 
     private ItemStack[] inventory = new ItemStack[17];
 
+    public String ownerName;
     public UUID owner;
+    public int ownerCoins;
+    public int userCoins;
+    public int price;
+    public boolean infinite;
+
+    public void validateFields()
+    {
+        if(ownerCoins < 0) ownerCoins = 0;
+        if(userCoins < 0) userCoins = 0;
+        if(price < 0) price = 0;
+    }
 
     @Override
     public void writeToNBT(NBTTagCompound compound)
     {
         super.writeToNBT(compound);
+
+        validateFields();
+
         NBTTagList itemList = new NBTTagList();
         for(int i=0; i < inventory.length; i++)
         {
@@ -42,11 +66,14 @@ public class TileVendor extends TileEntity implements IInventory
         }
 
         compound.setTag("Inventory", itemList);
-        compound.setInteger("CoinSum", 0);
-        compound.setInteger("UserCoinSum", 0);
-        compound.setInteger("ItemPrice", 0);
-        compound.setString("BlockOwner", owner == null? "" : owner.toString());
-        compound.setBoolean("Infinite", false);
+        compound.setInteger("CoinSum", ownerCoins);
+        compound.setInteger("UserCoinSum", userCoins);
+        compound.setInteger("ItemPrice", price);
+        if(ownerName != null && !ownerName.isEmpty())
+            compound.setString("OwnerName", ownerName);
+        if(owner != null)
+            compound.setString("BlockOwner", owner.toString());
+        compound.setBoolean("Infinite", infinite);
         compound.setBoolean("Mode", false);
         compound.setBoolean("OutOfStock", false);
         compound.setBoolean("OutOfCoins", false);
@@ -87,7 +114,7 @@ public class TileVendor extends TileEntity implements IInventory
             }
         }
 
-
+        ownerName = compound.getString("OwnerName");
         String str = compound.getString("BlockOwner");
         if(str.isEmpty()) owner = null;
         else
@@ -99,6 +126,13 @@ public class TileVendor extends TileEntity implements IInventory
             {
                 owner = null;
             }
+
+        ownerCoins = compound.getInteger("CoinSum");
+        userCoins = compound.getInteger("UserCoinSum");
+        price = compound.getInteger("ItemPrice");
+        infinite = compound.getBoolean("Infinite");
+
+        validateFields();
     }
 
     @Override
@@ -106,6 +140,25 @@ public class TileVendor extends TileEntity implements IInventory
     {
         NBTTagCompound nbt = new NBTTagCompound();
         writeToNBT(nbt);
+        NBTTagList tagList = nbt.getTagList("Inventory", Constants.NBT.TAG_COMPOUND);
+        List<Byte> slots = new ArrayList<Byte>(inventory.length);
+        for (int i = 0; i < tagList.tagCount(); i++)
+        {
+            NBTTagCompound tag = tagList.getCompoundTagAt(i);
+            byte slot = tag.getByte("Slot");
+            slots.add(slot);
+        }
+        ItemStack stack = new ItemStack(Blocks.air, 0);
+        for(byte i = 0; i < inventory.length; i++)
+        {
+            if(!slots.contains(i))
+            {
+                NBTTagCompound tag = new NBTTagCompound();
+                tag.setByte("Slot", i);
+                stack.writeToNBT(tag);
+                tagList.appendTag(tag);
+            }
+        }
         return new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, 1, nbt);
     }
 
@@ -146,6 +199,8 @@ public class TileVendor extends TileEntity implements IInventory
             }
         }
 
+        scheduleUpdate();
+
         return stack;
     }
 
@@ -159,6 +214,7 @@ public class TileVendor extends TileEntity implements IInventory
     public void setInventorySlotContents(int slot, ItemStack stack)
     {
         inventory[slot] = stack;
+        scheduleUpdate();
     }
 
     @Override
@@ -202,5 +258,20 @@ public class TileVendor extends TileEntity implements IInventory
     public boolean isItemValidForSlot(int slot, ItemStack stack)
     {
         return false;
+    }
+
+    public void scheduleUpdate()
+    {
+        worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+    }
+
+    public void updateBlocks()
+    {
+
+    }
+
+    public void onButtonPressed(int buttonId, boolean shiftPressed)
+    {
+
     }
 }

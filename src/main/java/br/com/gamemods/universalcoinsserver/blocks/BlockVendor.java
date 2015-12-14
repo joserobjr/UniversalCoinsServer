@@ -1,27 +1,18 @@
 package br.com.gamemods.universalcoinsserver.blocks;
 
-import br.com.gamemods.universalcoinsserver.CommonProxy;
 import br.com.gamemods.universalcoinsserver.GuiHandler;
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.tile.TileVendor;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
-import net.minecraftforge.common.util.Constants;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 public class BlockVendor extends BlockContainer
@@ -71,7 +62,10 @@ public class BlockVendor extends BlockContainer
             tile = (TileVendor) te;
         }
 
-        if(player.getPersistentID().equals(tile.owner))
+        ItemStack heldItem = player.getHeldItem();
+        if(heldItem != null && heldItem.getItem() == UniversalCoinsServer.proxy.itemVendorWrench)
+            player.openGui(UniversalCoinsServer.instance, GuiHandler.GUI_VENDOR_WRENCH, world, x, y, z);
+        else if(player.getPersistentID().equals(tile.owner))
             player.openGui(UniversalCoinsServer.instance, GuiHandler.GUI_VENDOR_OWNER, world, x, y, z);
         return true;
     }

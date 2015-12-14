@@ -16,7 +16,7 @@ public class ContainerVendor extends Container
         this.tile = tile;
 
         addSlotToContainer(new SlotGhost(tile, TileVendor.SLOT_TRADE, 9, 17));
-        addSlotToContainer(new SlotCoinInput(tile, TileVendor.SLOT_COIN_INPUT, 35, 55));
+        addSlotToContainer(new SlotCoinInput(tile, TileVendor.SLOT_OWNER_COIN_INPUT, 35, 55));
         addSlotToContainer(new SlotCard(tile, TileVendor.SLOT_CARD, 17, 55));
         addSlotToContainer(new SlotOutput(tile, TileVendor.SLOT_COIN_OUTPUT, 152, 55));
 
