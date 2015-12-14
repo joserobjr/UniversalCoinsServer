@@ -7,11 +7,24 @@ import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.block.Block;
 import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.config.Configuration;
+import net.minecraftforge.oredict.RecipeSorter;
 
 public class CommonProxy
 {
+    public static Block[] supports = { Blocks.stone, Blocks.cobblestone, Blocks.stonebrick, Blocks.planks,
+            Blocks.crafting_table, Blocks.gravel, Blocks.jukebox, Blocks.sandstone, Blocks.gold_block,
+            Blocks.iron_block, Blocks.brick_block, Blocks.mossy_cobblestone, Blocks.obsidian, Blocks.diamond_block,
+            Blocks.emerald_block, Blocks.lapis_block, };
+    static Object[] reagents = { Blocks.stone, Blocks.cobblestone, Blocks.stonebrick, Blocks.planks,
+            Blocks.crafting_table, Blocks.gravel, Blocks.jukebox, Blocks.sandstone, Items.gold_ingot, Items.iron_ingot,
+            Blocks.brick_block, Blocks.mossy_cobblestone, Blocks.obsidian, Items.diamond, Items.emerald,
+            Blocks.lapis_block, };
+
     public Configuration config;
 
     public Block blockTradeStation, blockVendor, blockVendorFrame, blockCardStation, blockBase, blockSafe,
@@ -100,5 +113,138 @@ public class CommonProxy
     public void registerGuis()
     {
         NetworkRegistry.INSTANCE.registerGuiHandler(UniversalCoinsServer.instance, new GuiHandler());
+    }
+
+    public void registerRecipes()
+    {
+        ItemStack seller = new ItemStack(itemSeller);
+        ItemStack coin = new ItemStack(itemCoin);
+        ItemStack smallStack = new ItemStack(itemSmallCoinStack);
+        ItemStack largeStack = new ItemStack(itemLargeCoinStack);
+        ItemStack smallBag = new ItemStack(itemSmallCoinBag);
+        ItemStack largeBag = new ItemStack(itemLargeCoinBag);
+
+        GameRegistry.addShapelessRecipe(new ItemStack(itemCoin, 9), smallStack );
+        GameRegistry.addShapelessRecipe(new ItemStack(itemSmallCoinStack, 9), largeStack );
+        GameRegistry.addShapelessRecipe(new ItemStack(itemLargeCoinStack, 9), smallBag );
+        GameRegistry.addShapelessRecipe(new ItemStack(itemSmallCoinBag, 9), largeBag );
+
+        GameRegistry.addShapelessRecipe(smallStack, coin, coin, coin, coin, coin, coin, coin, coin, coin );
+        GameRegistry.addShapelessRecipe(largeStack, smallStack, smallStack, smallStack, smallStack, smallStack, smallStack, smallStack, smallStack, smallStack);
+        GameRegistry.addShapelessRecipe(smallBag, largeStack, largeStack, largeStack, largeStack, largeStack, largeStack, largeStack, largeStack, largeStack );
+        GameRegistry.addShapelessRecipe(largeBag, smallBag, smallBag, smallBag, smallBag, smallBag, smallBag, smallBag, smallBag, smallBag );
+
+        GameRegistry.addShapedRecipe(seller,
+                "LGE",
+                "PPP",
+                'L', Items.leather,
+                'G', Items.gold_ingot,
+                'E', Items.ender_pearl,
+                'P', Items.paper
+        );
+
+        GameRegistry.addShapedRecipe(new ItemStack(blockTradeStation),
+                "IGI",
+                "ICI",
+                "III",
+                'I', Items.iron_ingot,
+                'G', Items.gold_ingot,
+                'C', itemSeller
+        );
+
+        for (int i = 0; i < supports.length; i++)
+            GameRegistry.addShapedRecipe(new ItemStack(blockVendor, 1, i),
+                    "XXX",
+                    "XRX",
+                    "*G*",
+                    'X', Blocks.glass,
+                    'G', Items.gold_ingot,
+                    'R', Items.redstone,
+                    '*', reagents[i]
+            );
+
+        GameRegistry.addRecipe(new RecipeVendingFrame());
+        RecipeSorter.register("universalcoins:vendingframe", RecipeVendingFrame.class, RecipeSorter.Category.SHAPED, "after:minecraft:shaped");
+
+        GameRegistry.addShapelessRecipe(new ItemStack(itemAdvSign), new ItemStack(Items.sign));
+        GameRegistry.addShapelessRecipe(new ItemStack(Items.sign), new ItemStack(itemAdvSign));
+
+        GameRegistry.addShapedRecipe(new ItemStack(blockCardStation),
+                "III",
+                "ICI",
+                "III",
+                'I', Items.iron_ingot,
+                'C', itemSmallCoinBag
+        );
+        GameRegistry.addShapedRecipe(new ItemStack(blockBase),
+                "III",
+                "ICI",
+                "III",
+                'I', Items.iron_ingot,
+                'C', itemCoin
+        );
+
+        GameRegistry.addShapedRecipe(new ItemStack(blockSafe),
+                "III",
+                "IEI",
+                "III",
+                'I', Items.iron_ingot,
+                'E', itemEnderCard
+        );
+
+        GameRegistry.addRecipe(new RecipeEnderCard());
+        RecipeSorter.register("universalcoins:endercard", RecipeEnderCard.class, RecipeSorter.Category.SHAPED, "after:minecraft:shaped");
+
+        GameRegistry.addShapedRecipe(new ItemStack(blockSlots),
+                "IGI",
+                "IRI",
+                "III",
+                'I', Items.iron_ingot,
+                'R', Items.redstone,
+                'G', Items.gold_ingot
+        );
+
+        GameRegistry.addShapedRecipe(new ItemStack(blockSignal),
+                "IXI",
+                "XRX",
+                "IXI",
+                'I',
+                Items.iron_ingot,
+                'R',
+                Items.redstone
+        );
+
+        GameRegistry.addShapelessRecipe(new ItemStack(itemLinkCard), Items.paper, Items.paper, Items.ender_pearl);
+
+        GameRegistry.addShapedRecipe(new ItemStack(blockPackager),
+                "IPI",
+                "SRS",
+                "IRI",
+                'I', Items.iron_ingot,
+                'R', Items.redstone,
+                'S', Items.string,
+                'P', Items.paper
+        );
+
+        GameRegistry.addRecipe(new RecipePlankTextureChange());
+        RecipeSorter.register("universalcoins:plankchange", RecipePlankTextureChange.class, RecipeSorter.Category.SHAPELESS, "after:minecraft:shapeless");
+
+        GameRegistry.addShapedRecipe(new ItemStack(blockPowerBase),
+                "III",
+                "MRM",
+                "III",
+                'I', Items.iron_ingot,
+                'R', Blocks.redstone_block,
+                'M', Items.redstone
+        );
+
+        GameRegistry.addShapedRecipe(new ItemStack(blockPowerReceiver),
+                "III",
+                "MRM",
+                "III",
+                'I', Items.iron_ingot,
+                'R', Blocks.redstone_block,
+                'M', new ItemStack(Items.dye, 1, 4)
+        );
     }
 }

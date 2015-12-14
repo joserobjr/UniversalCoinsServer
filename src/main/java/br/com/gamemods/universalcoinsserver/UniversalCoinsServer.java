@@ -45,5 +45,6 @@ public class UniversalCoinsServer
         proxy.registerItems();
         proxy.registerTiles();
         proxy.registerGuis();
+        proxy.registerRecipes();
     }
 }
