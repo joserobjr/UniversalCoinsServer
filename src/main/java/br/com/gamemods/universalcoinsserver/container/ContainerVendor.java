@@ -111,4 +111,11 @@ public class ContainerVendor extends Container
             lastPrice = tile.price;
         }
     }
+
+    @Override
+    public void onContainerClosed(EntityPlayer player)
+    {
+        super.onContainerClosed(player);
+        tile.onContainerClosed(player);
+    }
 }

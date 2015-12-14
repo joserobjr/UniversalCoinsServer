@@ -43,6 +43,7 @@ public class TileVendor extends TileEntity implements IInventory
     public boolean infinite;
     public boolean sellMode;
     public byte textColor;
+    public EntityPlayer opener;
 
     public void validateFields()
     {
@@ -96,7 +97,7 @@ public class TileVendor extends TileEntity implements IInventory
         compound.setBoolean("UserLargeStackButtonActive", false);
         compound.setBoolean("UserSmallBagButtonActive", false);
         compound.setBoolean("UserLargeBagButtonActive", false);
-        compound.setBoolean("InUse", false);
+        compound.setBoolean("InUse", opener != null);
         compound.setString("BlockIcon", "");
         compound.setInteger("TextColor", textColor);
         compound.setInteger("remoteX", 0);
@@ -215,6 +216,7 @@ public class TileVendor extends TileEntity implements IInventory
     @Override
     public ItemStack getStackInSlotOnClosing(int slot)
     {
+        opener = null;
         return getStackInSlot(slot);
     }
 
@@ -313,7 +315,6 @@ public class TileVendor extends TileEntity implements IInventory
                     textColor = 0;
                 updateBlocks();
                 scheduleUpdate();
-                return;
         }
     }
 
@@ -321,5 +322,26 @@ public class TileVendor extends TileEntity implements IInventory
     {
         sellMode = !sellMode;
         updateBlocks();
+    }
+
+    public boolean isInUse(EntityPlayer player)
+    {
+        if(opener == null)
+            return false;
+
+        if(!opener.isEntityAlive() || !isUseableByPlayer(opener))
+        {
+            opener = null;
+            return false;
+        }
+
+        return !opener.isEntityEqual(player);
+
+    }
+
+    public void onContainerClosed(EntityPlayer player)
+    {
+        if(player.isEntityEqual(opener))
+            opener = null;
     }
 }

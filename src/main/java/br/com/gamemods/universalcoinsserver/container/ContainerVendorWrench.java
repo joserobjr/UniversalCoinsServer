@@ -36,4 +36,11 @@ public class ContainerVendorWrench extends Container
             lastInfinite = tile.infinite;
         }
     }
+
+    @Override
+    public void onContainerClosed(EntityPlayer player)
+    {
+        super.onContainerClosed(player);
+        tile.onContainerClosed(player);
+    }
 }

@@ -8,9 +8,11 @@ import net.minecraft.block.material.Material;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.inventory.ContainerPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.world.World;
 
 import java.util.UUID;
@@ -63,10 +65,31 @@ public class BlockVendor extends BlockContainer
         }
 
         ItemStack heldItem = player.getHeldItem();
+        int open;
         if(heldItem != null && heldItem.getItem() == UniversalCoinsServer.proxy.itemVendorWrench)
-            player.openGui(UniversalCoinsServer.instance, GuiHandler.GUI_VENDOR_WRENCH, world, x, y, z);
+            open = GuiHandler.GUI_VENDOR_WRENCH;
         else if(player.getPersistentID().equals(tile.owner))
-            player.openGui(UniversalCoinsServer.instance, GuiHandler.GUI_VENDOR_OWNER, world, x, y, z);
+            open = GuiHandler.GUI_VENDOR_OWNER;
+        else if(tile.price <= 0)
+            return false;
+        else if(tile.sellMode)
+            open = GuiHandler.GUI_VENDOR_SELL;
+        else
+            open = GuiHandler.GUI_VENDOR_BUY;
+
+        if(tile.isInUse(player))
+        {
+            player.addChatMessage(new ChatComponentTranslation("chat.warning.inuse"));
+            return false;
+        }
+
+        player.openGui(UniversalCoinsServer.instance, open, world, x, y, z);
+        if(!(player.openContainer instanceof ContainerPlayer))
+        {
+            tile.opener = player;
+            tile.scheduleUpdate();
+        }
+
         return true;
     }
 
