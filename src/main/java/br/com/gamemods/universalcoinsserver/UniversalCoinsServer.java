@@ -17,6 +17,9 @@ public class UniversalCoinsServer
     public static CommonProxy proxy = new CommonProxy();
     public static Logger logger;
 
+    @Mod.Instance("universalcoins")
+    public static UniversalCoinsServer instance;
+
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event)
     {
@@ -31,5 +34,6 @@ public class UniversalCoinsServer
         proxy.registerBlocks();
         proxy.registerItems();
         proxy.registerTiles();
+        proxy.registerGuis();
     }
 }

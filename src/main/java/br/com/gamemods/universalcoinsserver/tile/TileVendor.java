@@ -1,5 +1,7 @@
 package br.com.gamemods.universalcoinsserver.tile;
 
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -11,8 +13,13 @@ import net.minecraftforge.common.util.Constants;
 
 import java.util.UUID;
 
-public class TileVendor extends TileEntity
+public class TileVendor extends TileEntity implements IInventory
 {
+    public static final int SLOT_TRADE = 9;
+    public static final int SLOT_COIN_INPUT = 14;
+    public static final int SLOT_CARD = 10;
+    public static final int SLOT_COIN_OUTPUT = 13;
+
     private ItemStack[] inventory = new ItemStack[17];
 
     public UUID owner;
@@ -105,5 +112,95 @@ public class TileVendor extends TileEntity
     @Override
     public void onDataPacket(NetworkManager net, S35PacketUpdateTileEntity pkt) {
         readFromNBT(pkt.func_148857_g());
+    }
+
+    @Override
+    public int getSizeInventory()
+    {
+        return inventory.length;
+    }
+
+    @Override
+    public ItemStack getStackInSlot(int slot)
+    {
+        return inventory[slot];
+    }
+
+    @Override
+    public ItemStack decrStackSize(int slot, int size)
+    {
+        ItemStack stack = getStackInSlot(slot);
+        if (stack != null)
+        {
+            if (stack.stackSize <= size)
+            {
+                setInventorySlotContents(slot, null);
+            }
+            else
+            {
+                stack = stack.splitStack(size);
+                if (stack.stackSize == 0)
+                {
+                    setInventorySlotContents(slot, null);
+                }
+            }
+        }
+
+        return stack;
+    }
+
+    @Override
+    public ItemStack getStackInSlotOnClosing(int slot)
+    {
+        return getStackInSlot(slot);
+    }
+
+    @Override
+    public void setInventorySlotContents(int slot, ItemStack stack)
+    {
+        inventory[slot] = stack;
+    }
+
+    @Override
+    public String getInventoryName()
+    {
+        return null;
+    }
+
+    @Override
+    public boolean hasCustomInventoryName()
+    {
+        return false;
+    }
+
+    @Override
+    public int getInventoryStackLimit()
+    {
+        return 64;
+    }
+
+    @Override
+    public boolean isUseableByPlayer(EntityPlayer player)
+    {
+        return worldObj.getTileEntity(xCoord, yCoord, zCoord) == this
+                && player.getDistanceSq(xCoord + 0.5, yCoord + 0.5, zCoord + 0.5) < 64;
+    }
+
+    @Override
+    public void openInventory()
+    {
+
+    }
+
+    @Override
+    public void closeInventory()
+    {
+
+    }
+
+    @Override
+    public boolean isItemValidForSlot(int slot, ItemStack stack)
+    {
+        return false;
     }
 }

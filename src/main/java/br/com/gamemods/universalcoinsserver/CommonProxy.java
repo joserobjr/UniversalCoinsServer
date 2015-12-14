@@ -3,6 +3,7 @@ package br.com.gamemods.universalcoinsserver;
 import br.com.gamemods.universalcoinsserver.blocks.*;
 import br.com.gamemods.universalcoinsserver.item.*;
 import br.com.gamemods.universalcoinsserver.tile.*;
+import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.block.Block;
 import net.minecraft.creativetab.CreativeTabs;
@@ -94,5 +95,10 @@ public class CommonProxy
         GameRegistry.registerTileEntity(TilePackager.class, "TilePackager");
         GameRegistry.registerTileEntity(TilePowerBase.class, "TilePowerBase");
         GameRegistry.registerTileEntity(TilePowerReceiver.class, "TilePowerReceiver");
+    }
+
+    public void registerGuis()
+    {
+        NetworkRegistry.INSTANCE.registerGuiHandler(UniversalCoinsServer.instance, new GuiHandler());
     }
 }

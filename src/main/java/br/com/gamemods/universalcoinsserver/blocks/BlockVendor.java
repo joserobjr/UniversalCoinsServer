@@ -1,6 +1,7 @@
 package br.com.gamemods.universalcoinsserver.blocks;
 
 import br.com.gamemods.universalcoinsserver.CommonProxy;
+import br.com.gamemods.universalcoinsserver.GuiHandler;
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.tile.TileVendor;
 import cpw.mods.fml.relauncher.Side;
@@ -59,9 +60,20 @@ public class BlockVendor extends BlockContainer
         return meta;
     }
 
-    public ItemStack getItemStack(World world, int x, int y, int z)
+    @Override
+    public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer player, int metadata, float sideX, float sideY, float sideZ)
     {
-        return new ItemStack(this, 1, world.getBlockMetadata(x, y, z));
+        TileVendor tile;
+        {
+            TileEntity te = world.getTileEntity(x,y,z);
+            if(!(te instanceof TileVendor))
+                return false;
+            tile = (TileVendor) te;
+        }
+
+        if(player.getPersistentID().equals(tile.owner))
+            player.openGui(UniversalCoinsServer.instance, GuiHandler.GUI_VENDOR_OWNER, world, x, y, z);
+        return true;
     }
 
     @Override
