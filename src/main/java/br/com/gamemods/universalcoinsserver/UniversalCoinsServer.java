@@ -1,5 +1,7 @@
 package br.com.gamemods.universalcoinsserver;
 
+import br.com.gamemods.universalcoinsserver.datastore.CardDataBase;
+import br.com.gamemods.universalcoinsserver.datastore.PropertiesDB;
 import br.com.gamemods.universalcoinsserver.net.ButtonMessage;
 import br.com.gamemods.universalcoinsserver.net.VendorServerMessage;
 import cpw.mods.fml.common.Mod;
@@ -13,6 +15,9 @@ import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraftforge.common.config.Configuration;
 import org.apache.logging.log4j.Logger;
 
+import java.io.File;
+import java.io.IOException;
+
 @Mod(modid = "universalcoins", name = "Universal Coins Server", version = "1.7.10-1.6.38")
 @SideOnly(Side.SERVER)
 public class UniversalCoinsServer
@@ -25,9 +30,10 @@ public class UniversalCoinsServer
     public static UniversalCoinsServer instance;
 
     public static SimpleNetworkWrapper network;
+    public static CardDataBase cardDb;
 
     @Mod.EventHandler
-    public void preInit(FMLPreInitializationEvent event)
+    public void preInit(FMLPreInitializationEvent event) throws IOException
     {
         proxy.config = new Configuration(event.getSuggestedConfigurationFile());
         proxy.loadConfig();
@@ -36,6 +42,8 @@ public class UniversalCoinsServer
         network = NetworkRegistry.INSTANCE.newSimpleChannel("universalcoins");
         network.registerMessage(ButtonMessage.class, ButtonMessage.class, 0, Side.SERVER);
         network.registerMessage(VendorServerMessage.class, VendorServerMessage.class, 1, Side.SERVER);
+
+        cardDb = new PropertiesDB(new File(event.getModConfigurationDirectory(), "database"));
     }
 
     @Mod.EventHandler

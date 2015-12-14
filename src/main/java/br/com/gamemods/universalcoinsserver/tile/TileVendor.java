@@ -1,9 +1,14 @@
 package br.com.gamemods.universalcoinsserver.tile;
 
+import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
+import br.com.gamemods.universalcoinsserver.blocks.PlayerOwned;
+import br.com.gamemods.universalcoinsserver.datastore.*;
+import br.com.gamemods.universalcoinsserver.item.ItemCoin;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -17,12 +22,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class TileVendor extends TileEntity implements IInventory
+public class TileVendor extends TileEntity implements IInventory, PlayerOwned
 {
     public static final int SLOT_STORAGE_FIST = 0;
     public static final int SLOT_STORAGE_LAST = 8;
     public static final int SLOT_TRADE = 9;
-    public static final int SLOT_CARD = 10;
+    public static final int SLOT_OWNER_CARD = 10;
     public static final int SLOT_SELL = 11;
     public static final int SLOT_OUTPUT = 12;
     public static final int SLOT_COIN_OUTPUT = 13;
@@ -225,6 +230,146 @@ public class TileVendor extends TileEntity implements IInventory
     {
         inventory[slot] = stack;
         scheduleUpdate();
+
+        if(stack == null)
+            return;
+
+        Item item = stack.getItem();
+        switch (slot)
+        {
+            case SLOT_OWNER_COIN_INPUT:
+            case SLOT_USER_COIN_INPUT:
+            {
+                if(item instanceof ItemCoin)
+                {
+                    int current;
+                    int cardSlot;
+                    boolean owner = SLOT_OWNER_COIN_INPUT == slot;
+                    if(owner)
+                    {
+                        current = ownerCoins;
+                        cardSlot = SLOT_OWNER_CARD;
+                    }
+                    else
+                    {
+                        current = userCoins;
+                        cardSlot = SLOT_USER_CARD;
+                    }
+
+                    int itemValue = ((ItemCoin)item).getValue();
+                    int depositAmount = Math.min(stack.stackSize, (Integer.MAX_VALUE - current) / itemValue);
+
+                    int depositValue = depositAmount * itemValue;
+
+                    if (!checkEnderCardAcceptDeposit(cardSlot, depositValue)
+                            || !depositToEnderCard(cardSlot, depositValue))
+                    {
+                        current += depositValue;
+                    }
+
+                    if(owner) ownerCoins = current;
+                    else userCoins = current;
+
+                    inventory[slot].stackSize -= depositAmount;
+                    if (inventory[slot].stackSize == 0)
+                        inventory[slot] = null;
+                }
+                break;
+            }
+        }
+    }
+
+    private boolean checkEnderCardAcceptDeposit(int cardSlot, int depositAmount)
+    {
+        ItemStack stack = inventory[cardSlot];
+        if(stack == null || !stack.hasTagCompound())
+            return false;
+
+        Item item = stack.getItem();
+        if(item != UniversalCoinsServer.proxy.itemEnderCard)
+            return false;
+
+        UUID owner;
+        if(cardSlot == SLOT_OWNER_CARD)
+            owner = this.owner;
+        else if(cardSlot == SLOT_USER_CARD)
+        {
+            if(opener == null) return false;
+            owner = opener.getPersistentID();
+        }
+        else
+            return false;
+
+        String account = stack.getTagCompound().getString("Account");
+        if(account.isEmpty())
+            return false;
+
+        UUID cardOwner;
+        try
+        {
+            cardOwner = UniversalCoinsServer.cardDb.getAccountOwner(account);
+        } catch (DataBaseException e)
+        {
+            UniversalCoinsServer.logger.warn(e);
+            return false;
+        }
+
+        if(!owner.equals(cardOwner))
+            return false;
+
+        int balance;
+        try
+        {
+            balance = UniversalCoinsServer.cardDb.getAccountBalance(account);
+        } catch (DataBaseException e)
+        {
+            UniversalCoinsServer.logger.warn(e);
+            return false;
+        }
+        return balance >= 0 && ((long)depositAmount)+balance < Integer.MAX_VALUE;
+    }
+
+    private boolean depositToEnderCard(int cardSlot, int depositAmount)
+    {
+        CardOperator operator;
+        if(cardSlot == SLOT_USER_CARD)
+        {
+            if(opener != null) operator = new PlayerOperator(opener);
+            else operator = new BlockOperator(this);
+        }
+        else if(cardSlot == SLOT_OWNER_CARD)
+        {
+            if(opener != null && opener.getPersistentID().equals(owner)) operator = new PlayerOperator(opener);
+            else operator = new BlockOperator(this);
+        }
+        else
+            return false;
+
+        return depositToEnderCard(cardSlot, depositAmount, operator, TransactionType.DEPOSIT_FROM_MACHINE, null);
+    }
+
+    private boolean depositToEnderCard(int cardSlot, int depositAmount, CardOperator operator, TransactionType transaction, String product)
+    {
+        ItemStack stack = inventory[cardSlot];
+        if(stack == null || !stack.hasTagCompound())
+            return false;
+
+        Item item = stack.getItem();
+        if(item != UniversalCoinsServer.proxy.itemEnderCard)
+            return false;
+
+        String account = stack.getTagCompound().getString("Account");
+        if(account.isEmpty())
+            return false;
+
+        try
+        {
+            return UniversalCoinsServer.cardDb.depositToAccount(account, depositAmount, operator, transaction, product);
+        } catch (DataBaseException e)
+        {
+            UniversalCoinsServer.logger.warn(e);
+            return false;
+        }
     }
 
     @Override
@@ -343,5 +488,11 @@ public class TileVendor extends TileEntity implements IInventory
     {
         if(player.isEntityEqual(opener))
             opener = null;
+    }
+
+    @Override
+    public UUID getOwnerId()
+    {
+        return owner;
     }
 }

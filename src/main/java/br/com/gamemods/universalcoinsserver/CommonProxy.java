@@ -70,11 +70,11 @@ public class CommonProxy
 
     public void registerItems()
     {
-        itemCoin = new Item().setUnlocalizedName("itemCoin").setCreativeTab(tabUniversalCoin);
-        itemSmallCoinStack = new Item().setUnlocalizedName("itemSmallCoinStack").setCreativeTab(tabUniversalCoin);
-        itemLargeCoinStack = new Item().setUnlocalizedName("itemLargeCoinStack").setCreativeTab(tabUniversalCoin);
-        itemSmallCoinBag = new Item().setUnlocalizedName("itemSmallCoinBag").setCreativeTab(tabUniversalCoin);
-        itemLargeCoinBag = new Item().setUnlocalizedName("itemLargeCoinBag").setCreativeTab(tabUniversalCoin);
+        itemCoin = new ItemCoin(1).setUnlocalizedName("itemCoin").setCreativeTab(tabUniversalCoin);
+        itemSmallCoinStack = new ItemCoin(9).setUnlocalizedName("itemSmallCoinStack").setCreativeTab(tabUniversalCoin);
+        itemLargeCoinStack = new ItemCoin(9*9).setUnlocalizedName("itemLargeCoinStack").setCreativeTab(tabUniversalCoin);
+        itemSmallCoinBag = new ItemCoin(9*9*9).setUnlocalizedName("itemSmallCoinBag").setCreativeTab(tabUniversalCoin);
+        itemLargeCoinBag = new ItemCoin(9*9*9*9).setUnlocalizedName("itemLargeCoinBag").setCreativeTab(tabUniversalCoin);
         itemCard = new ItemCard(tabUniversalCoin);
         itemEnderCard = new ItemEnderCard(tabUniversalCoin);
         itemSeller = new Item().setUnlocalizedName("itemSeller").setCreativeTab(tabUniversalCoin).setMaxStackSize(1);
