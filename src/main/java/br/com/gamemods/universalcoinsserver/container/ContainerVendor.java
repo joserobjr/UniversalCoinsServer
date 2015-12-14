@@ -10,6 +10,8 @@ import net.minecraft.item.ItemStack;
 public class ContainerVendor extends Container
 {
     private TileVendor tile;
+    private Boolean lastMode;
+    private int lastPrice, lastUserCoins, lastOwnerCoins;
 
     public ContainerVendor(InventoryPlayer playerInventory, TileVendor tile)
     {
@@ -92,5 +94,21 @@ public class ContainerVendor extends Container
         }
 
         return stack;
+    }
+
+    @Override
+    public void detectAndSendChanges()
+    {
+        super.detectAndSendChanges();
+
+        if(lastMode == null || lastMode != tile.sellMode
+            || lastUserCoins != tile.userCoins || lastOwnerCoins != tile.ownerCoins || lastPrice != tile.price)
+        {
+            tile.scheduleUpdate();
+            lastMode = tile.sellMode;
+            lastUserCoins = tile.userCoins;
+            lastOwnerCoins = tile.ownerCoins;
+            lastPrice = tile.price;
+        }
     }
 }

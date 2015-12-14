@@ -46,7 +46,7 @@ public class ButtonMessage implements IMessage, IMessageHandler<ButtonMessage, I
             return null;
 
         if (te instanceof TileVendor) {
-            ((TileVendor) te).onButtonPressed(message.buttonId, message.shiftPressed);
+            ((TileVendor) te).onButtonPressed(player, message.buttonId, message.shiftPressed);
         }
 
         return null;

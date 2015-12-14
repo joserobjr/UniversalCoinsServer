@@ -1,6 +1,7 @@
 package br.com.gamemods.universalcoinsserver.tile;
 
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
@@ -28,6 +29,7 @@ public class TileVendor extends TileEntity implements IInventory
     public static final int SLOT_OWNER_COIN_INPUT = 14;
     public static final int SLOT_USER_COIN_INPUT = 15;
     public static final int SLOT_USER_CARD_SLOT = 16;
+    public static final int BUTTON_MODE = 0;
 
     private ItemStack[] inventory = new ItemStack[17];
 
@@ -37,6 +39,7 @@ public class TileVendor extends TileEntity implements IInventory
     public int userCoins;
     public int price;
     public boolean infinite;
+    public boolean sellMode;
 
     public void validateFields()
     {
@@ -74,7 +77,7 @@ public class TileVendor extends TileEntity implements IInventory
         if(owner != null)
             compound.setString("BlockOwner", owner.toString());
         compound.setBoolean("Infinite", infinite);
-        compound.setBoolean("Mode", false);
+        compound.setBoolean("Mode", sellMode);
         compound.setBoolean("OutOfStock", false);
         compound.setBoolean("OutOfCoins", false);
         compound.setBoolean("InventoryFull", false);
@@ -131,6 +134,7 @@ public class TileVendor extends TileEntity implements IInventory
         userCoins = compound.getInteger("UserCoinSum");
         price = compound.getInteger("ItemPrice");
         infinite = compound.getBoolean("Infinite");
+        sellMode = compound.getBoolean("Mode");
 
         validateFields();
     }
@@ -270,8 +274,22 @@ public class TileVendor extends TileEntity implements IInventory
 
     }
 
-    public void onButtonPressed(int buttonId, boolean shiftPressed)
+    public void onButtonPressed(EntityPlayerMP player, int buttonId, boolean shiftPressed)
     {
+        switch (buttonId)
+        {
+            case BUTTON_MODE:
+            {
+                if(player.getPersistentID().equals(owner))
+                    onModeButtonPressed();
+                return;
+            }
+        }
+    }
 
+    public void onModeButtonPressed()
+    {
+        sellMode = !sellMode;
+        updateBlocks();
     }
 }
