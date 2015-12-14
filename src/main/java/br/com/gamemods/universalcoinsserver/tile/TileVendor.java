@@ -623,16 +623,48 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
             return;
         }
 
-        input.stackSize -= trade.stackSize;
+        int quantity = 1;
+        if(all && trade.stackSize * 2 <= maxStackSize)
+        {
+            int maxQuantity = input.stackSize / trade.stackSize;
+            if(!infinite) maxQuantity = Math.min(maxQuantity, storageSpace / trade.stackSize);
+
+            if(maxQuantity <= 0)
+            {
+                sellButtonActive = false;
+                scheduleUpdate();
+                return;
+            }
+            else if(maxQuantity > 1)
+            {
+                if(infinite || price * maxQuantity <= ownerCoins)
+                    quantity = maxQuantity;
+                else
+                    quantity = ownerCoins / price;
+            }
+
+            if(quantity <= 0)
+                return;
+            else if(quantity > 1)
+            {
+                for(; quantity>1; quantity--)
+                {
+                    if(((long)userCoins) + (((long)price)*quantity) <= Integer.MAX_VALUE)
+                        break;
+                }
+            }
+        }
+
+        input.stackSize -= trade.stackSize * quantity;
         if(input.stackSize <= 0)
             inventory[SLOT_SELL] = null;
 
-        userCoins += price;
+        userCoins += price * quantity;
         if(!infinite)
         {
-            ownerCoins -= price;
+            ownerCoins -= price * quantity;
 
-            storageSpace = trade.stackSize;
+            storageSpace = trade.stackSize * quantity;
             for(int space: spaces)
             {
                 ItemStack stack = inventory[space];
@@ -920,8 +952,9 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         }
 
         ItemStack sellStack = inventory[SLOT_SELL];
-        sellButtonActive = !sellToUser && !outOfInventorySpace && !outOfCoins && matches(trade, sellStack) && sellStack.stackSize >= trade.stackSize;
-        buyButtonActive = sellToUser && !outOfStock && userCoins >= price;
+        sellButtonActive = !sellToUser && !outOfInventorySpace && !outOfCoins && matches(trade, sellStack)
+                && sellStack.stackSize >= trade.stackSize && ((long)userCoins)+price <= Integer.MAX_VALUE;
+        buyButtonActive = sellToUser && !outOfStock && userCoins >= price && ((long)ownerCoins)+price <= Integer.MAX_VALUE;
 
         if(buyButtonActive)
         {
