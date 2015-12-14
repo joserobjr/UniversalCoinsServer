@@ -2,6 +2,9 @@ package br.com.gamemods.universalcoinsserver;
 
 import br.com.gamemods.universalcoinsserver.blocks.*;
 import br.com.gamemods.universalcoinsserver.item.*;
+import br.com.gamemods.universalcoinsserver.recipe.RecipeEnderCard;
+import br.com.gamemods.universalcoinsserver.recipe.RecipePlankTextureChange;
+import br.com.gamemods.universalcoinsserver.recipe.RecipeVendingFrame;
 import br.com.gamemods.universalcoinsserver.tile.*;
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.registry.GameRegistry;

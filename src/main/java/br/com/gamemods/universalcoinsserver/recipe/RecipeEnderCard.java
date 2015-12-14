@@ -1,5 +1,6 @@
-package br.com.gamemods.universalcoinsserver;
+package br.com.gamemods.universalcoinsserver.recipe;
 
+import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import net.minecraft.init.Items;
 import net.minecraft.inventory.InventoryCrafting;
 import net.minecraft.item.Item;
