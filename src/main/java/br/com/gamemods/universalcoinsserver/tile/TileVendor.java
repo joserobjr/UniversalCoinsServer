@@ -57,6 +57,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
     public boolean sellToUser;
     public byte textColor;
     public EntityPlayer opener;
+    public String icon;
     private boolean[] buttonOwnerWithdraw = new boolean[5];
     private boolean[] buttonUserWithdraw = new boolean[5];
     private boolean outOfStock, outOfInventorySpace, buyButtonActive, sellButtonActive, outOfCoins;
@@ -141,7 +142,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
         compound.setBoolean("UserSmallBagButtonActive", buttonUserWithdraw[3]);
         compound.setBoolean("UserLargeBagButtonActive", buttonUserWithdraw[4]);
         compound.setBoolean("InUse", opener != null);
-        compound.setString("BlockIcon", "");
+        compound.setString("BlockIcon", icon);
         compound.setInteger("TextColor", textColor);
         compound.setInteger("remoteX", 0);
         compound.setInteger("remoteY", 0);
@@ -195,6 +196,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
         infinite = compound.getBoolean("Infinite");
         sellToUser = compound.getBoolean("Mode");
         textColor = (byte) compound.getInteger("TextColor");
+        icon = compound.getString("BlockIcon");
 
         validateFields();
     }

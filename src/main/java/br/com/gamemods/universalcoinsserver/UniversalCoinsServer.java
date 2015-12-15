@@ -2,8 +2,7 @@ package br.com.gamemods.universalcoinsserver;
 
 import br.com.gamemods.universalcoinsserver.datastore.CardDataBase;
 import br.com.gamemods.universalcoinsserver.datastore.PropertiesDB;
-import br.com.gamemods.universalcoinsserver.net.ButtonMessage;
-import br.com.gamemods.universalcoinsserver.net.VendorServerMessage;
+import br.com.gamemods.universalcoinsserver.net.*;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -42,6 +41,9 @@ public class UniversalCoinsServer
         network = NetworkRegistry.INSTANCE.newSimpleChannel("universalcoins");
         network.registerMessage(ButtonMessage.class, ButtonMessage.class, 0, Side.SERVER);
         network.registerMessage(VendorServerMessage.class, VendorServerMessage.class, 1, Side.SERVER);
+        network.registerMessage(TextureMessage.class, TextureMessage.class, 7, Side.SERVER);
+        network.registerMessage(SignMessage.class, SignMessage.class, 8, Side.CLIENT);
+        network.registerMessage(SignServerMessage.class, SignServerMessage.class, 9, Side.SERVER);
 
         cardDb = new PropertiesDB(new File(event.getModConfigurationDirectory(), "database"));
     }

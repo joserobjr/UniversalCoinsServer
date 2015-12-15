@@ -24,7 +24,8 @@ public class GuiHandler implements IGuiHandler
             GUI_SIGNAL = 11,
             GUI_PACKAGER = 12,
             GUI_POWER_BASE = 13,
-            GUI_POWER_RECEIVER = 14;
+            GUI_POWER_RECEIVER = 14,
+            GUI_ADV_SIGN = 15;
 
     @Override
     public Object getServerGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z)
@@ -46,6 +47,9 @@ public class GuiHandler implements IGuiHandler
                     }
                 }
                 else return null;
+            case GUI_TRADE_STATION:
+            case GUI_ADV_SIGN:
+                return null;
         }
 
         if(te instanceof TileVendor)
