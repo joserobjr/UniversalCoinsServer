@@ -3,8 +3,6 @@ package br.com.gamemods.universalcoinsserver.tile;
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.blocks.PlayerOwned;
 import br.com.gamemods.universalcoinsserver.net.SignMessage;
-import br.com.gamemods.universalcoinsserver.net.TextureMessage;
-import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.Packet;
 import net.minecraft.tileentity.TileEntitySign;
@@ -58,7 +56,7 @@ public class TileAdvSign extends TileEntitySign implements PlayerOwned
         tagCompound.setString("Text2", this.signText[1]);
         tagCompound.setString("Text3", this.signText[2]);
         tagCompound.setString("Text4", this.signText[3]);
-        tagCompound.setString("blockOwner", ownerName);
+        if(ownerName != null) tagCompound.setString("blockOwner", ownerName);
         tagCompound.setString("blockIcon", icon);
         if(owner != null) tagCompound.setString("blockOwnerId", owner.toString());
     }
@@ -71,12 +69,6 @@ public class TileAdvSign extends TileEntitySign implements PlayerOwned
         return UniversalCoinsServer.network.getPacketFrom(
                 new SignMessage(this.xCoord, this.yCoord, this.zCoord, lines, ownerName, icon)
         );
-    }
-
-    public void sendTextureUpdateMessage(ItemStack stack)
-    {
-        String blockIcon = stack.getIconIndex().getIconName();
-        UniversalCoinsServer.network.sendToServer(new TextureMessage(xCoord, yCoord, zCoord, blockIcon));
     }
 
     public void scheduleUpdate()

@@ -69,8 +69,8 @@ public class ItemAdvSign extends ItemSign
                 {
                     //NBTTagList textureList = tagCompound.getTagList("Inventory", Constants.NBT.TAG_COMPOUND);
                     //byte slot = tagCompound.getByte("Texture");
-                    ItemStack textureStack = ItemStack.loadItemStackFromNBT(tagCompound);
-                    tile.sendTextureUpdateMessage(textureStack);
+                    //ItemStack textureStack = ItemStack.loadItemStackFromNBT(tagCompound);
+                    //tile.sendTextureUpdateMessage(textureStack);
                 }
                 else
                 {
