@@ -24,13 +24,6 @@ public class RecipePlankTextureChange implements IRecipe
         boolean hasPlank = false;
         for (int j = 0; j < inventorycrafting.getSizeInventory(); j++)
         {
-            if (inventorycrafting.getStackInSlot(j) != null && !hasPlank
-                    && isWoodPlank(inventorycrafting.getStackInSlot(j)))
-            {
-                hasPlank = true;
-                plankStack = inventorycrafting.getStackInSlot(j);
-                continue;
-            }
             if (inventorycrafting.getStackInSlot(j) != null && !hasItem && (inventorycrafting.getStackInSlot(j)
                     .getItem() == UniversalCoinsServer.proxy.itemAdvSign
                     || Block.getBlockFromItem(
@@ -38,6 +31,13 @@ public class RecipePlankTextureChange implements IRecipe
             {
                 hasItem = true;
                 newStack = inventorycrafting.getStackInSlot(j).copy();
+                continue;
+            }
+            if (inventorycrafting.getStackInSlot(j) != null && !hasPlank
+                    && isWoodPlank(inventorycrafting.getStackInSlot(j)))
+            {
+                hasPlank = true;
+                plankStack = inventorycrafting.getStackInSlot(j);
                 continue;
             }
             if (inventorycrafting.getStackInSlot(j) != null)
@@ -54,6 +54,9 @@ public class RecipePlankTextureChange implements IRecipe
 
     private boolean isWoodPlank(ItemStack stack)
     {
+        if(Block.getBlockFromItem(stack.getItem()) != null)
+            return true;
+
         for (ItemStack oreStack : OreDictionary.getOres("plankWood"))
         {
             if (OreDictionary.itemMatches(oreStack, stack, false))

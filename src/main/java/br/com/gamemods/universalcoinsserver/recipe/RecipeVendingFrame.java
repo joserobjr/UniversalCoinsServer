@@ -1,6 +1,7 @@
 package br.com.gamemods.universalcoinsserver.recipe;
 
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
+import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.inventory.InventoryCrafting;
@@ -15,8 +16,11 @@ public class RecipeVendingFrame implements IRecipe
 {
 
     private ItemStack newStack;
-    private Object[] recipeItems = {Items.stick, Items.gold_ingot, Items.stick, Items.redstone, Blocks.planks,
-            Items.redstone, Items.stick, Items.stick, Items.stick};
+    private Object[] recipeItems = {
+            Items.stick, Items.gold_ingot, Items.stick,
+            Items.redstone, Blocks.planks, Items.redstone,
+            Items.stick, Items.stick, Items.stick
+    };
 
     @Override
     public boolean matches(InventoryCrafting var1, World var2)
@@ -73,6 +77,9 @@ public class RecipeVendingFrame implements IRecipe
 
     private boolean isWoodPlank(ItemStack stack)
     {
+        if(Block.getBlockFromItem(stack.getItem()) != null)
+            return true;
+
         for (ItemStack oreStack : OreDictionary.getOres("plankWood"))
         {
             if (OreDictionary.itemMatches(oreStack, stack, false))
