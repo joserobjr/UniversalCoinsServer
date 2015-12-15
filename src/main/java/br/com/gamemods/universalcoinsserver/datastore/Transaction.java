@@ -51,6 +51,21 @@ public final class Transaction
         private int balanceBefore;
         private int balanceAfter;
 
+        public String getAccountNumber()
+        {
+            return accountNumber;
+        }
+
+        public String getAccountOwner()
+        {
+            return accountOwner;
+        }
+
+        public ItemStack getCard()
+        {
+            return card;
+        }
+
         @Override
         public int getBalanceAfter()
         {
@@ -99,6 +114,11 @@ public final class Transaction
         public int getBalanceBefore()
         {
             return balanceBefore;
+        }
+
+        public Machine getMachine()
+        {
+            return machine;
         }
 
         @Override

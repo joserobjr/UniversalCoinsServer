@@ -209,6 +209,7 @@ public class PropertiesDB implements CardDataBase
 
             try(FileWriter writer = new FileWriter(file))
             {
+                normalize(properties);
                 properties.store(writer, "Last transaction: "+lastTransaction);
             }
         }
@@ -333,6 +334,8 @@ public class PropertiesDB implements CardDataBase
             properties.put("quantity", transaction.getQuantity());
             properties.put("price", transaction.getPrice());
             properties.put("price.total", transaction.getTotalPrice());
+            store(properties, "coins.user", transaction.getUserCoinSource());
+            store(properties, "coins.owner", transaction.getOwnerCoinSource());
             store(properties, "operator", transaction.getOperator());
             store(properties, "machine", transaction.getMachine());
             store(properties, "product", transaction.getProduct());
@@ -360,6 +363,28 @@ public class PropertiesDB implements CardDataBase
             Object value = properties.get(key);
             if(!(value instanceof String))
                 properties.put(key, String.valueOf(value));
+        }
+    }
+
+    private void store(Properties properties, String key, Transaction.CoinSource coinSource)
+    {
+        if(coinSource != null)
+        {
+            properties.put(key+".balance.before", coinSource.getBalanceBefore());
+            properties.put(key+".balance.after", coinSource.getBalanceAfter());
+            if(coinSource instanceof Transaction.MachineCoinSource)
+            {
+                properties.put(key+".type", "machine");
+                properties.put(key+".machine.id", ((Transaction.MachineCoinSource) coinSource).getMachine().getMachineId());
+            }
+            else if(coinSource instanceof Transaction.CardCoinSource)
+            {
+                properties.put(key+".type", "card");
+                Transaction.CardCoinSource card = (Transaction.CardCoinSource) coinSource;
+                properties.put(key+".account.number", card.getAccountNumber());
+                properties.put(key+".account.owner", card.getAccountOwner());
+                store(properties, key+".card", card.getCard());
+            }
         }
     }
 

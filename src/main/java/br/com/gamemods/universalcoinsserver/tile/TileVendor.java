@@ -314,6 +314,24 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
                     if (!checkEnderCardAcceptDeposit(cardSlot, depositValue)
                             || !depositToEnderCard(cardSlot, depositValue))
                     {
+                        Transaction.CoinSource coinSource = new Transaction.MachineCoinSource(this, current, depositValue);
+                        ItemStack product = stack.copy();
+                        product.stackSize = depositAmount;
+                        Transaction transaction = new Transaction(this, Transaction.Operation.DEPOSIT_TO_MACHINE,
+                                depositAmount,
+                                owner?coinSource:null,
+                                owner?null:coinSource,
+                                product);
+
+                        try
+                        {
+                            UniversalCoinsServer.cardDb.saveTransaction(transaction);
+                        }
+                        catch (DataBaseException e)
+                        {
+                            UniversalCoinsServer.logger.error(e);
+                        }
+
                         current += depositValue;
                     }
 
@@ -952,6 +970,20 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
 
         if(!all)
         {
+            Transaction.CoinSource coinSource = new Transaction.MachineCoinSource(this, balance, -value);
+            Transaction transaction = new Transaction(this, Transaction.Operation.WITHDRAW_FROM_MACHINE, 1,
+                    fromOwner?null:coinSource,
+                    fromOwner?coinSource:null,
+                    new ItemStack(item, 1));
+            try
+            {
+                UniversalCoinsServer.cardDb.saveTransaction(transaction);
+            }
+            catch (DataBaseException e)
+            {
+                UniversalCoinsServer.logger.error(e);
+            }
+
             balance -= value;
             if(stack != null) stack.stackSize++;
             else setInventorySlotContents(slot, new ItemStack(item));
@@ -960,15 +992,19 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
         }
         else
         {
+            int totalValue;
+            int balanceBefore = balance;
+            int amount;
             if(stack == null)
             {
-                int amount = balance / value;
+                amount = balance / value;
                 stack = new ItemStack(item);
                 int maxStackSize = stack.getMaxStackSize();
                 if (amount > maxStackSize)
                     amount = maxStackSize;
 
-                balance -= value * amount;
+                totalValue = value * amount;
+                balance -= totalValue;
                 stack.stackSize = amount;
 
                 inventory[slot] = stack;
@@ -976,12 +1012,27 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
             }
             else
             {
-                int amount = Math.min(balance / value, stack.getMaxStackSize() - stack.stackSize);
+                amount = Math.min(balance / value, stack.getMaxStackSize() - stack.stackSize);
 
-                balance -= value * amount;
+                totalValue = value * amount;
+                balance -= totalValue;
                 stack.stackSize += amount;
 
                 setCoins(balance, fromOwner);
+            }
+
+            Transaction.CoinSource coinSource = new Transaction.MachineCoinSource(this, balanceBefore, -totalValue);
+            Transaction transaction = new Transaction(this, Transaction.Operation.WITHDRAW_FROM_MACHINE, amount,
+                    fromOwner?null:coinSource,
+                    fromOwner?coinSource:null,
+                    new ItemStack(item, amount));
+            try
+            {
+                UniversalCoinsServer.cardDb.saveTransaction(transaction);
+            }
+            catch (DataBaseException e)
+            {
+                UniversalCoinsServer.logger.error(e);
             }
         }
 
