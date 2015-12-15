@@ -8,5 +8,9 @@ public interface CardDataBase
 
     int getAccountBalance(String account) throws DataBaseException;
 
-    boolean depositToAccount(String account, int depositAmount, CardOperator operator, TransactionType transaction, String product) throws DataBaseException;
+    boolean depositToAccount(String account, int depositAmount, Operator operator, TransactionType transaction, String product) throws DataBaseException;
+
+    void saveNewMachine(Machine machine) throws DataBaseException;
+
+    void saveTransaction(Transaction transaction) throws DataBaseException;
 }

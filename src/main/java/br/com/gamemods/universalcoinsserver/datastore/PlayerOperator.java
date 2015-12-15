@@ -4,7 +4,7 @@ import net.minecraft.entity.player.EntityPlayer;
 
 import java.util.UUID;
 
-public class PlayerOperator implements CardOperator
+public class PlayerOperator implements Operator
 {
     private final UUID playerId;
 
@@ -21,5 +21,13 @@ public class PlayerOperator implements CardOperator
     public UUID getPlayerId()
     {
         return playerId;
+    }
+
+    @Override
+    public String toString()
+    {
+        return "PlayerOperator{" +
+                "playerId=" + playerId +
+                '}';
     }
 }

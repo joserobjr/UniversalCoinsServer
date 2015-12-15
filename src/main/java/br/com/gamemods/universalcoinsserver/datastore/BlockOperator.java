@@ -6,7 +6,7 @@ import net.minecraft.tileentity.TileEntity;
 
 import java.util.UUID;
 
-public class BlockOperator implements CardOperator
+public class BlockOperator implements Operator
 {
     private final int x, y, z, dim;
     private final String blockId;
@@ -71,5 +71,19 @@ public class BlockOperator implements CardOperator
     public int getZ()
     {
         return z;
+    }
+
+    @Override
+    public String toString()
+    {
+        return "BlockOperator{" +
+                "blockId='" + blockId + '\'' +
+                ", x=" + x +
+                ", y=" + y +
+                ", z=" + z +
+                ", dim=" + dim +
+                ", blockMeta=" + blockMeta +
+                ", owner=" + owner +
+                '}';
     }
 }

@@ -23,7 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-public class TileVendor extends TileEntity implements IInventory, PlayerOwned
+public class TileVendor extends TileEntity implements IInventory, PlayerOwned, Machine
 {
     public static final int SLOT_STORAGE_FIST = 0;
     public static final int SLOT_STORAGE_LAST = 8;
@@ -47,6 +47,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
 
     private ItemStack[] inventory = new ItemStack[17];
 
+    private UUID machineId;
     public String ownerName;
     public UUID owner;
     public int ownerCoins;
@@ -68,6 +69,30 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         updateWithdrawButtons(true);
         updateWithdrawButtons(false);
         updateOperations();
+    }
+
+    @Override
+    public TileEntity getMachineEntity()
+    {
+        return this;
+    }
+
+    @Override
+    public UUID getMachineId()
+    {
+        if(machineId == null)
+        {
+            machineId = UUID.randomUUID();
+            try
+            {
+                UniversalCoinsServer.cardDb.saveNewMachine(this);
+            }
+            catch (DataBaseException e)
+            {
+                UniversalCoinsServer.logger.error("Failed to save machine ID "+machineId, e);
+            }
+        }
+        return machineId;
     }
 
     @Override
@@ -121,6 +146,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         compound.setInteger("remoteX", 0);
         compound.setInteger("remoteY", 0);
         compound.setInteger("remoteZ", 0);
+        compound.setString("MachineId", getMachineId().toString());
     }
 
     @Override
@@ -150,6 +176,17 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
             catch (Exception e)
             {
                 owner = null;
+            }
+
+        str = compound.getString("MachineId");
+        if(str.isEmpty()) getMachineId();
+            try
+            {
+                machineId = UUID.fromString(str);
+            }
+            catch (Exception e)
+            {
+                getMachineId();
             }
 
         ownerCoins = compound.getInteger("CoinSum");
@@ -396,16 +433,16 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
 
     private boolean depositToEnderCard(int cardSlot, int depositAmount)
     {
-        CardOperator operator;
+        Operator operator;
         if(cardSlot == SLOT_USER_CARD)
         {
             if(opener != null) operator = new PlayerOperator(opener);
-            else operator = new BlockOperator(this);
+            else operator = new MachineOperator(this);
         }
         else if(cardSlot == SLOT_OWNER_CARD)
         {
             if(opener != null && opener.getPersistentID().equals(owner)) operator = new PlayerOperator(opener);
-            else operator = new BlockOperator(this);
+            else operator = new MachineOperator(this);
         }
         else
             return false;
@@ -413,7 +450,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         return depositToEnderCard(cardSlot, depositAmount, operator, TransactionType.DEPOSIT_FROM_MACHINE, null);
     }
 
-    private boolean depositToEnderCard(int cardSlot, int depositAmount, CardOperator operator, TransactionType transaction, String product)
+    private boolean depositToEnderCard(int cardSlot, int depositAmount, Operator operator, TransactionType transaction, String product)
     {
         ItemStack stack = inventory[cardSlot];
         if(stack == null || !stack.hasTagCompound())
@@ -576,6 +613,10 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
 
     public void sell(boolean all)
     {
+        Transaction.Operation operation = Transaction.Operation.SELL_TO_MACHINE;
+        Transaction.CoinSource userSource;
+        Transaction.CoinSource ownerSource;
+
         ItemStack trade = inventory[SLOT_TRADE];
         ItemStack input = inventory[SLOT_SELL];
         if(!matches(trade, input)
@@ -655,7 +696,24 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
             }
         }
 
-        input.stackSize -= trade.stackSize * quantity;
+        userSource = new Transaction.MachineCoinSource(this, userCoins, price*quantity);
+        ownerSource = new Transaction.MachineCoinSource(this, ownerCoins, -(price*quantity));
+
+        ItemStack product = input.copy();
+        product.stackSize = trade.stackSize * quantity;
+
+        Transaction transaction = new Transaction(this, operation, quantity, userSource, ownerSource, product);
+        try
+        {
+            UniversalCoinsServer.cardDb.saveTransaction(transaction);
+        }
+        catch (DataBaseException e)
+        {
+            UniversalCoinsServer.logger.error("Failed to save transaction "+transaction, e);
+            return;
+        }
+
+        input.stackSize -= product.stackSize;
         if(input.stackSize <= 0)
             inventory[SLOT_SELL] = null;
 
@@ -664,7 +722,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         {
             ownerCoins -= price * quantity;
 
-            storageSpace = trade.stackSize * quantity;
+            storageSpace = product.stackSize;
             for(int space: spaces)
             {
                 ItemStack stack = inventory[space];
@@ -712,8 +770,19 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
         scheduleUpdate();
     }
 
+    public Operator getOperator()
+    {
+        if(opener != null)
+            return new PlayerOperator(opener);
+        return new MachineOperator(this);
+    }
+
     public void buy(boolean all)
     {
+        Transaction.Operation operation = Transaction.Operation.BUY_FROM_MACHINE;
+        Transaction.CoinSource userSource;
+        Transaction.CoinSource ownerSource;
+
         ItemStack trade = inventory[SLOT_TRADE];
         if(trade == null || trade.stackSize <= 0)
         {
@@ -796,6 +865,32 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
                 return;
         }
 
+        userSource = new Transaction.MachineCoinSource(this, userCoins, -(price*quantity));
+        ownerSource = new Transaction.MachineCoinSource(this, ownerCoins, price*quantity);
+
+        ItemStack product;
+        if(output != null)
+        {
+            product = output.copy();
+            product.stackSize = trade.stackSize * quantity;
+        }
+        else
+        {
+            product = trade.copy();
+            product.stackSize *= quantity;
+        }
+
+        Transaction transaction = new Transaction(this, operation, quantity, userSource, ownerSource, product);
+        try
+        {
+            UniversalCoinsServer.cardDb.saveTransaction(transaction);
+        }
+        catch (DataBaseException e)
+        {
+            UniversalCoinsServer.logger.error("Failed to save transaction "+transaction, e);
+            return;
+        }
+
         if(!infinite)
         {
             found = trade.stackSize * quantity;
@@ -824,16 +919,14 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned
 
         if(output != null)
         {
-            output.stackSize += trade.stackSize * quantity;
+            output.stackSize += product.stackSize;
             userCoins-= price * quantity;
             if(!infinite)
                 ownerCoins += price * quantity;
         }
         else
         {
-            ItemStack copy = trade.copy();
-            copy.stackSize *= quantity;
-            inventory[SLOT_OUTPUT] = copy;
+            inventory[SLOT_OUTPUT] = product;
             userCoins -= price * quantity;
             if(!infinite)
                 ownerCoins += price * quantity;
