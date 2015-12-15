@@ -1,0 +1,55 @@
+#####
+# Main
+#####
+tile.blockTradeStation.name=Universal Trade Station
+tile.blockVendor.name=Vending Block
+tile.blockVendor.stone.name=Stone Vending Block
+tile.blockVendor.cobblestone.name=Cobblestone Vending Block
+tile.blockVendor.stonebrick.name=Stone Brick Vending Block
+tile.blockVendor.wood.name=Wood Vending Block
+tile.blockVendor.crafting_table.name=Crafting Table Vending Block
+tile.blockVendor.gravel.name=Gravel Vending Block
+tile.blockVendor.jukebox.name=Jukebox Vending Block
+tile.blockVendor.sandstone.name=Sandstone Vending Block
+tile.blockVendor.gold.name=Gold Vending Block
+tile.blockVendor.iron.name=Iron Vending Block
+tile.blockVendor.brick.name=Brick Vending Block
+tile.blockVendor.mossy_cobblestone.name=Mossy Cobblestone Vending Block
+tile.blockVendor.obsidian.name=Obsidian Vending Block
+tile.blockVendor.diamond.name=Diamond Vending Block
+tile.blockVendor.emerald.name=Emerald Vending Block
+tile.blockVendor.lapis.name=Lapis Vending Block
+tile.blockVendorFrame.name=Vending Frame
+tile.blockCardStation.name=Universal Bank ATM
+tile.blockBase.name=Base Block
+tile.blockSafe.name=Ender Safe
+tile.blockBandit.name=Slot Machine
+tile.blockSignal.name=Redstone Signal Generator
+tile.blockPackager.name=Packager
+tile.blockPowerBase.name=Power Base
+tile.blockPowerReceiver.name=Power Receiver
+item.itemCoin.name=Coin
+item.itemSmallCoinStack.name=Coin Stack
+item.itemLargeCoinStack.name=Large Coin Stack
+item.itemSmallCoinBag.name=Coin Bag
+item.itemLargeCoinBag.name=Large Coin Bag
+item.itemUCCard.name=Universal Card
+item.itemEnderCard.name=Ender Card
+item.itemSeller.name=Selling Catalog
+item.itemGuide.name=Universal Coins Guide
+item.itemVendorWrench.name=Vendor Wrench
+item.itemVendorFrame.name=Vending Frame
+item.itemUCSign.name=Advanced Sign
+item.itemLinkCard.name=Remote Storage Linking Card
+item.itemPackage.name=Package
+itemGroup.tabUniversalCoins=Universal Coins
+
+#####
+# Sign GUI
+#####
+sign.sellmode.sell=Selling
+sign.sellmode.buy=Buying
+sign.price=Price: 
+sign.warning.stock=Out Of Stock!
+sign.warning.coins=Out Of Coins!
+sign.warning.inventoryfull=Inventory is Full!

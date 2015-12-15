@@ -1,0 +1,55 @@
+#####
+# Main
+#####
+tile.blockTradeStation.name=Estação de Troca Universal
+tile.blockVendor.name=Bloco de Venda Automática
+tile.blockVendor.stone.name=Bloco de Venda Automática de Pedra
+tile.blockVendor.cobblestone.name=Bloco de Venda Automática de Pedregulho
+tile.blockVendor.stonebrick.name=Bloco de Venda Automática de Tijolo de Pedra
+tile.blockVendor.wood.name=Bloco de Venda Automática de Madeira
+tile.blockVendor.crafting_table.name=Bloco de Venda Automática de Bancada
+tile.blockVendor.gravel.name=Bloco de Venda Automática de Cascalho
+tile.blockVendor.jukebox.name=Bloco de Venda Automática de Bloco de Nota
+tile.blockVendor.sandstone.name=Bloco de Venda Automática de Arenito
+tile.blockVendor.gold.name=Bloco de Venda Automática de Ouro
+tile.blockVendor.iron.name=Bloco de Venda Automática de Ferro
+tile.blockVendor.brick.name=Bloco de Venda Automática de Tijolos
+tile.blockVendor.mossy_cobblestone.name=Bloco de Venda Automática de Pedra com Musgo
+tile.blockVendor.obsidian.name=Bloco de Venda Automática de Obsidiana
+tile.blockVendor.diamond.name=Bloco de Venda Automática de Diamante
+tile.blockVendor.emerald.name=Bloco de Venda Automática de Esmeralda
+tile.blockVendor.lapis.name=Bloco de Venda Automática de Lápis Lazuli
+tile.blockVendorFrame.name=Moldura de Venda Automática
+tile.blockCardStation.name=Banco 24 Horas Universal
+tile.blockBase.name=Bloco Base
+tile.blockSafe.name=Cofre do Fim
+tile.blockBandit.name=Caça-Níqueis
+tile.blockSignal.name=Gerador de Sinal de Redstone
+tile.blockPackager.name=Empacotador
+tile.blockPowerBase.name=Base de Energia
+tile.blockPowerReceiver.name=Receptor de Energia
+item.itemCoin.name=Moeda
+item.itemSmallCoinStack.name=Pilha de Moedas
+item.itemLargeCoinStack.name=Grande Pilha de Moedas
+item.itemSmallCoinBag.name=Saco de Moedas
+item.itemLargeCoinBag.name=Grande Saco de Moedas
+item.itemUCCard.name=Cartão Universal
+item.itemEnderCard.name=Cartão do Fim
+item.itemSeller.name=Catálogo de Venda
+item.itemGuide.name=Guia do Universal Coins
+item.itemVendorWrench.name=Chave de Venda Automática
+item.itemVendorFrame.name=Moldura de Venda Automática
+item.itemUCSign.name=Placa Avançada
+item.itemLinkCard.name=Remote Storage Linking Card
+item.itemPackage.name=Pacote
+itemGroup.tabUniversalCoins=Universal Coins
+
+#####
+# Sign GUI
+#####
+sign.sellmode.sell=Vendendo
+sign.sellmode.buy=Comprando
+sign.price=Preço: 
+sign.warning.stock=Sem Estoque!
+sign.warning.coins=Sem Moedas!
+sign.warning.inventoryfull=Inventário Cheio!

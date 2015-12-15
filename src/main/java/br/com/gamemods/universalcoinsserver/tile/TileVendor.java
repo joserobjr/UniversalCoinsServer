@@ -4,6 +4,7 @@ import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.blocks.PlayerOwned;
 import br.com.gamemods.universalcoinsserver.datastore.*;
 import br.com.gamemods.universalcoinsserver.item.ItemCoin;
+import net.minecraft.enchantment.Enchantment;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
@@ -16,6 +17,7 @@ import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.Constants;
 
 import java.util.ArrayList;
@@ -57,7 +59,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
     public boolean sellToUser;
     public byte textColor;
     public EntityPlayer opener;
-    public String icon;
+    public String icon = "";
     private boolean[] buttonOwnerWithdraw = new boolean[5];
     private boolean[] buttonUserWithdraw = new boolean[5];
     private boolean outOfStock, outOfInventorySpace, buyButtonActive, sellButtonActive, outOfCoins;
@@ -545,7 +547,97 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
 
     public void updateBlocks()
     {
+        if(worldObj == null)
+            return;
 
+        ItemStack trade = inventory[SLOT_TRADE];
+        String signText[] = { "", "", "", "" };
+        if (trade != null)
+        {
+            signText[0] = "&" + Integer.toHexString(textColor)
+                    + StatCollector.translateToLocal(sellToUser?"sign.sellmode.sell":"sign.sellmode.buy");
+
+            // add out of stock notification if not infinite and no stock found
+            if (!infinite && sellToUser && outOfStock)
+            {
+                signText[0] = "&" + Integer.toHexString(textColor)
+                        + (StatCollector.translateToLocal("sign.warning.stock"));
+            }
+            // add out of coins notification if buying and no funds available
+            if (!sellToUser && outOfCoins && !infinite)
+            {
+                signText[0] = "&" + Integer.toHexString(textColor)
+                        + (StatCollector.translateToLocal("sign.warning.coins"));
+            }
+            // add inventory full notification
+            if (!sellToUser && outOfInventorySpace)
+            {
+                signText[0] = "&" + Integer.toHexString(textColor)
+                        + (StatCollector.translateToLocal("sign.warning.inventoryfull"));
+            }
+            if (trade.stackSize > 1)
+            {
+                signText[1] = "&" + Integer.toHexString(textColor) + trade.stackSize + " " + trade.getDisplayName();
+            }
+            else
+            {
+                signText[1] = "&" + Integer.toHexString(textColor) + trade.getDisplayName();
+            }
+            if (trade.isItemEnchanted())
+            {
+                signText[2] = "&" + Integer.toHexString(textColor);
+                NBTTagList tagList = trade.getEnchantmentTagList();
+                for (int i = 0; i < tagList.tagCount(); i++)
+                {
+                    NBTTagCompound enchant = tagList.getCompoundTagAt(i);
+                    signText[2] = signText[2].concat(Enchantment.enchantmentsList[enchant.getInteger("id")]
+                            .getTranslatedName(enchant.getInteger("lvl")) + ", ");
+                }
+            }
+            else
+                signText[2] = "";
+
+            if (trade.getItem() == UniversalCoinsServer.proxy.itemPackage)
+            {
+                signText[2] = "&" + Integer.toHexString(textColor);
+                if (trade.stackTagCompound != null)
+                {
+                    NBTTagList tagList = trade.stackTagCompound.getTagList("Inventory", Constants.NBT.TAG_COMPOUND);
+                    for (int i = 0; i < tagList.tagCount(); i++)
+                    {
+                        NBTTagCompound tag = tagList.getCompoundTagAt(i);
+                        //byte slot = tag.getByte("Slot");
+                        int itemCount = ItemStack.loadItemStackFromNBT(tag).stackSize;
+                        String itemName = ItemStack.loadItemStackFromNBT(tag).getDisplayName();
+                        signText[2] += itemCount + ":" + itemName + " ";
+                    }
+                }
+            }
+
+            signText[3] = "&" + Integer.toHexString(textColor) + StatCollector.translateToLocal("sign.price") + price;
+
+            // find and update all signs
+            updateSign(signText);
+        }
+    }
+
+    protected void updateSign(String[] lines, TileEntity te)
+    {
+        if (te instanceof TileAdvSign)
+        {
+            TileAdvSign tile = (TileAdvSign) te;
+            System.arraycopy(lines, 0, tile.signText, 0, 4);
+            tile.scheduleUpdate();
+            tile.markDirty();
+        }
+    }
+
+    protected void updateSign(String[] lines)
+    {
+        updateSign(lines, worldObj.getTileEntity(xCoord + 1, yCoord - 1, zCoord));
+        updateSign(lines, worldObj.getTileEntity(xCoord - 1, yCoord - 1, zCoord));
+        updateSign(lines, worldObj.getTileEntity(xCoord, yCoord - 1, zCoord - 1));
+        updateSign(lines, worldObj.getTileEntity(xCoord, yCoord - 1, zCoord + 1));
     }
 
     public void onButtonPressed(EntityPlayerMP player, int buttonId, boolean shiftPressed)

@@ -17,7 +17,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 
-@Mod(modid = "universalcoins", name = "Universal Coins Server", version = "1.7.10-1.6.38")
+@Mod(modid = "universalcoins", name = "Universal Coins Server", version = "1.7.10-1.6.38-gamemods")
 @SideOnly(Side.SERVER)
 public class UniversalCoinsServer
 {
