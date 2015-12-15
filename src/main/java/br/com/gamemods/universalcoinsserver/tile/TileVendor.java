@@ -20,6 +20,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.*;
 import net.minecraftforge.common.util.Constants;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -361,8 +362,14 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
 
     public void setOwnerCoins(int ownerCoins)
     {
+        if(ownerCoins == this.ownerCoins)
+            return;
+
         this.ownerCoins = ownerCoins;
-        updateWithdrawButtons(true);
+        boolean coins = outOfCoins;
+        updateOperations();
+        if(coins != outOfCoins)
+            updateBlocks();
     }
 
     public void setUserCoins(int userCoins)
@@ -400,6 +407,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
     public void markDirty()
     {
         updateOperations();
+        updateBlocks();
         super.markDirty();
     }
 
@@ -550,28 +558,29 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
         if(worldObj == null)
             return;
 
+        @Nullable
         ItemStack trade = inventory[SLOT_TRADE];
         IChatComponent signText[] = new IChatComponent[5];
         EnumChatFormatting[] styles = EnumChatFormatting.values();
-        if (trade != null)
+        ChatStyle color = new ChatStyle().setColor(styles[textColor]);
+
+        // Selling / Buying
+        signText[0] = new ChatComponentTranslation(sellToUser ? "sign.sellmode.sell" : "sign.sellmode.buy").setChatStyle(color);
+
+        // add out of stock notification if not infinite and no stock found
+        if (!infinite && sellToUser && outOfStock)
+            signText[0] = new ChatComponentTranslation("sign.warning.stock").setChatStyle(color);
+
+        // add out of coins notification if buying and no funds available
+        if (!sellToUser && outOfCoins && !infinite)
+            signText[0] = new ChatComponentTranslation("sign.warning.coins").setChatStyle(color);
+
+        // add inventory full notification
+        if (!sellToUser && outOfInventorySpace)
+            signText[0] = new ChatComponentTranslation("sign.warning.inventoryfull").setChatStyle(color);
+
+        if(trade != null)
         {
-            ChatStyle color = new ChatStyle().setColor(styles[textColor]);
-
-            // Selling / Buying
-            signText[0] = new ChatComponentTranslation(sellToUser ? "sign.sellmode.sell" : "sign.sellmode.buy").setChatStyle(color);
-
-            // add out of stock notification if not infinite and no stock found
-            if (!infinite && sellToUser && outOfStock)
-                signText[0] = new ChatComponentTranslation("sign.warning.stock").setChatStyle(color);
-
-            // add out of coins notification if buying and no funds available
-            if (!sellToUser && outOfCoins && !infinite)
-                signText[0] = new ChatComponentTranslation("sign.warning.coins").setChatStyle(color);
-
-            // add inventory full notification
-            if (!sellToUser && outOfInventorySpace)
-                signText[0] = new ChatComponentTranslation("sign.warning.inventoryfull").setChatStyle(color);
-
             if (trade.stackSize > 1)
                 signText[1] = new ChatComponentText(trade.stackSize+"x ").setChatStyle(color)
                         .appendSibling(new ChatComponentTranslation(trade.getUnlocalizedName()+".name"));
@@ -622,12 +631,12 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
                 }
                 signText[2] = base;
             }
-
-            signText[3] = new ChatComponentTranslation("sign.price").setChatStyle(color).appendText(Integer.toString(price));
-
-            // find and update all signs
-            updateSign(signText);
         }
+
+        signText[3] = new ChatComponentTranslation("sign.price").setChatStyle(color).appendText(Integer.toString(price));
+
+        // find and update all signs
+        updateSign(signText);
     }
 
     protected void updateSign(IChatComponent[] lines, TileEntity te)
@@ -1230,7 +1239,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
     public void onModeButtonPressed()
     {
         sellToUser = !sellToUser;
-        updateBlocks();
+        markDirty();
     }
 
     public boolean isInUse(EntityPlayer player)
