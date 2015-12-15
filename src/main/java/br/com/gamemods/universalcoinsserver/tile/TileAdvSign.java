@@ -8,6 +8,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.Packet;
 import net.minecraft.tileentity.TileEntitySign;
+import net.minecraft.util.IChatComponent;
 
 import java.util.UUID;
 
@@ -81,5 +82,16 @@ public class TileAdvSign extends TileEntitySign implements PlayerOwned
     public void scheduleUpdate()
     {
         super.worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+    }
+
+    public void setLines(IChatComponent[] lines)
+    {
+        for(int i = 0; i < 4; i++)
+        {
+            if(lines.length < i || lines[i] == null)
+                signText[i] = "";
+            else
+                signText[i] = IChatComponent.Serializer.func_150696_a(lines[i]);
+        }
     }
 }

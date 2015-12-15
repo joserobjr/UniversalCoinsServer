@@ -17,7 +17,7 @@ import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.StatCollector;
+import net.minecraft.util.*;
 import net.minecraftforge.common.util.Constants;
 
 import java.util.ArrayList;
@@ -551,55 +551,57 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
             return;
 
         ItemStack trade = inventory[SLOT_TRADE];
-        String signText[] = { "", "", "", "" };
+        IChatComponent signText[] = new IChatComponent[5];
+        EnumChatFormatting[] styles = EnumChatFormatting.values();
         if (trade != null)
         {
-            signText[0] = "&" + Integer.toHexString(textColor)
-                    + StatCollector.translateToLocal(sellToUser?"sign.sellmode.sell":"sign.sellmode.buy");
+            ChatStyle color = new ChatStyle().setColor(styles[textColor]);
+
+            // Selling / Buying
+            signText[0] = new ChatComponentTranslation(sellToUser ? "sign.sellmode.sell" : "sign.sellmode.buy").setChatStyle(color);
 
             // add out of stock notification if not infinite and no stock found
             if (!infinite && sellToUser && outOfStock)
-            {
-                signText[0] = "&" + Integer.toHexString(textColor)
-                        + (StatCollector.translateToLocal("sign.warning.stock"));
-            }
+                signText[0] = new ChatComponentTranslation("sign.warning.stock").setChatStyle(color);
+
             // add out of coins notification if buying and no funds available
             if (!sellToUser && outOfCoins && !infinite)
-            {
-                signText[0] = "&" + Integer.toHexString(textColor)
-                        + (StatCollector.translateToLocal("sign.warning.coins"));
-            }
+                signText[0] = new ChatComponentTranslation("sign.warning.coins").setChatStyle(color);
+
             // add inventory full notification
             if (!sellToUser && outOfInventorySpace)
-            {
-                signText[0] = "&" + Integer.toHexString(textColor)
-                        + (StatCollector.translateToLocal("sign.warning.inventoryfull"));
-            }
+                signText[0] = new ChatComponentTranslation("sign.warning.inventoryfull").setChatStyle(color);
+
             if (trade.stackSize > 1)
-            {
-                signText[1] = "&" + Integer.toHexString(textColor) + trade.stackSize + " " + trade.getDisplayName();
-            }
+                signText[1] = new ChatComponentText(trade.stackSize+"x ").setChatStyle(color)
+                        .appendSibling(new ChatComponentTranslation(trade.getUnlocalizedName()+".name"));
             else
-            {
-                signText[1] = "&" + Integer.toHexString(textColor) + trade.getDisplayName();
-            }
+                signText[1] = new ChatComponentTranslation(trade.getUnlocalizedName()+".name").setChatStyle(color);
+
             if (trade.isItemEnchanted())
             {
-                signText[2] = "&" + Integer.toHexString(textColor);
                 NBTTagList tagList = trade.getEnchantmentTagList();
+                IChatComponent base = null;
                 for (int i = 0; i < tagList.tagCount(); i++)
                 {
-                    NBTTagCompound enchant = tagList.getCompoundTagAt(i);
-                    signText[2] = signText[2].concat(Enchantment.enchantmentsList[enchant.getInteger("id")]
-                            .getTranslatedName(enchant.getInteger("lvl")) + ", ");
+                    NBTTagCompound tag = tagList.getCompoundTagAt(i);
+                    Enchantment enchantment = Enchantment.enchantmentsList[tag.getInteger("id")];
+
+                    IChatComponent msg = new ChatComponentTranslation(enchantment.getName())
+                            .appendText(" ").appendSibling(new ChatComponentTranslation("enchantment.level."+tag.getInteger("lvl")));
+
+                    if(base == null)
+                        base = msg.setChatStyle(color);
+                    else
+                        base.appendText(", ").appendSibling(msg);
                 }
+
+                signText[2] = base;
             }
-            else
-                signText[2] = "";
 
             if (trade.getItem() == UniversalCoinsServer.proxy.itemPackage)
             {
-                signText[2] = "&" + Integer.toHexString(textColor);
+                IChatComponent base = null;
                 if (trade.stackTagCompound != null)
                 {
                     NBTTagList tagList = trade.stackTagCompound.getTagList("Inventory", Constants.NBT.TAG_COMPOUND);
@@ -607,32 +609,39 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
                     {
                         NBTTagCompound tag = tagList.getCompoundTagAt(i);
                         //byte slot = tag.getByte("Slot");
-                        int itemCount = ItemStack.loadItemStackFromNBT(tag).stackSize;
-                        String itemName = ItemStack.loadItemStackFromNBT(tag).getDisplayName();
-                        signText[2] += itemCount + ":" + itemName + " ";
+                        ItemStack stack = ItemStack.loadItemStackFromNBT(tag);
+
+                        IChatComponent msg = new ChatComponentText(stack.stackSize+":")
+                                .appendSibling(new ChatComponentTranslation(stack.getUnlocalizedName()+".name"));
+
+                        if(base == null)
+                            base = msg.setChatStyle(color);
+                        else
+                            base.appendText(" ").appendSibling(msg);
                     }
                 }
+                signText[2] = base;
             }
 
-            signText[3] = "&" + Integer.toHexString(textColor) + StatCollector.translateToLocal("sign.price") + price;
+            signText[3] = new ChatComponentTranslation("sign.price").setChatStyle(color).appendText(Integer.toString(price));
 
             // find and update all signs
             updateSign(signText);
         }
     }
 
-    protected void updateSign(String[] lines, TileEntity te)
+    protected void updateSign(IChatComponent[] lines, TileEntity te)
     {
         if (te instanceof TileAdvSign)
         {
             TileAdvSign tile = (TileAdvSign) te;
-            System.arraycopy(lines, 0, tile.signText, 0, 4);
+            tile.setLines(lines);
             tile.scheduleUpdate();
             tile.markDirty();
         }
     }
 
-    protected void updateSign(String[] lines)
+    protected void updateSign(IChatComponent[] lines)
     {
         updateSign(lines, worldObj.getTileEntity(xCoord + 1, yCoord - 1, zCoord));
         updateSign(lines, worldObj.getTileEntity(xCoord - 1, yCoord - 1, zCoord));
