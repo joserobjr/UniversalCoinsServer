@@ -161,10 +161,4 @@ public class BlockVendor extends BlockContainer
     {
         return new TileVendor();
     }
-
-    @Override
-    public int getRenderType()
-    {
-        return 0;
-    }
 }
