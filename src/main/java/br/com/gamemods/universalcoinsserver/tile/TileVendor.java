@@ -8,6 +8,7 @@ import net.minecraft.enchantment.Enchantment;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -587,9 +588,12 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
             else
                 signText[1] = new ChatComponentTranslation(trade.getUnlocalizedName()+".name").setChatStyle(color);
 
-            if (trade.isItemEnchanted())
+            Item item = trade.getItem();
+            if (trade.isItemEnchanted() || (item == Items.enchanted_book && trade.hasTagCompound()))
             {
-                NBTTagList tagList = trade.getEnchantmentTagList();
+                NBTTagList tagList = trade.isItemEnchanted()? trade.getEnchantmentTagList() :
+                        trade.stackTagCompound.getTagList("StoredEnchantments", Constants.NBT.TAG_COMPOUND);
+
                 IChatComponent base = null;
                 for (int i = 0; i < tagList.tagCount(); i++)
                 {
@@ -608,7 +612,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
                 signText[2] = base;
             }
 
-            if (trade.getItem() == UniversalCoinsServer.proxy.itemPackage)
+            if (item == UniversalCoinsServer.proxy.itemPackage)
             {
                 IChatComponent base = null;
                 if (trade.stackTagCompound != null)
