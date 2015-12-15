@@ -409,6 +409,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
     {
         updateOperations();
         updateBlocks();
+        scheduleUpdate();
         super.markDirty();
     }
 
@@ -709,8 +710,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
                     textColor--;
                 else
                     textColor = 15;
-                updateBlocks();
-                scheduleUpdate();
+                markDirty();
                 return;
 
             case BUTTON_COLOR_PLUS:
@@ -718,8 +718,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
                     textColor++;
                 else
                     textColor = 0;
-                updateBlocks();
-                scheduleUpdate();
+                markDirty();
                 return;
 
             case BUTTON_BUY:
@@ -921,14 +920,14 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
         if(trade == null || trade.stackSize <= 0)
         {
             buyButtonActive = false;
-            scheduleUpdate();
+            markDirty();
             return;
         }
 
         if(userCoins < price)
         {
             buyButtonActive = false;
-            scheduleUpdate();
+            markDirty();
             return;
         }
 
@@ -938,7 +937,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
             if (matches(output, trade) || output.stackSize + trade.stackSize > output.getMaxStackSize())
             {
                 buyButtonActive = false;
-                scheduleUpdate();
+                markDirty();
                 return;
             }
         }
@@ -1067,7 +1066,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
         }
 
         validateFields();
-        scheduleUpdate();
+        markDirty();
     }
 
     public void withdraw(int multiplier, int slot, boolean all, boolean fromOwner)
@@ -1152,7 +1151,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
             }
         }
 
-        scheduleUpdate();
+        markDirty();
     }
 
     private int stateHashcode()
@@ -1171,8 +1170,7 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
             outOfInventorySpace = false;
             if(stateHashcode() != hashcode)
             {
-                scheduleUpdate();
-                updateBlocks();
+                markDirty();
             }
             return;
         }
