@@ -178,14 +178,30 @@ public class TileSignal extends TileTransactionMachine implements PlayerOwned, I
                 try
                 {
                     unlockOutputSlot = true;
+                    int before = coins;
                     coins = UniversalCoinsServerAPI.addCoinsAnywhere(this, coins);
+                    if(before == coins)
+                        return;
+
+                    markDirty();
+
+                    Transaction transaction = new Transaction(this, Transaction.Operation.WITHDRAW_FROM_MACHINE, duration,
+                            new PlayerOperator(player), null, new Transaction.MachineCoinSource(this, before, coins-before));
+
+                    try
+                    {
+                        UniversalCoinsServer.cardDb.saveTransaction(transaction);
+                    }
+                    catch (Exception e)
+                    {
+                        UniversalCoinsServer.logger.error(e);
+                    }
                 }
                 finally
                 {
                     unlockOutputSlot = false;
                 }
 
-                markDirty();
         }
     }
 
