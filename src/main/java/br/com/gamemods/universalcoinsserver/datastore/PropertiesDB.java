@@ -385,6 +385,11 @@ public class PropertiesDB implements CardDataBase
                 properties.put(key+".account.owner", card.getAccountOwner());
                 store(properties, key+".card", card.getCard());
             }
+            else if(coinSource instanceof Transaction.InventoryCoinSource)
+            {
+                properties.put(key+".type", "inventory");
+                store(properties, key+".holder", ((Transaction.InventoryCoinSource) coinSource).getOperator());
+            }
         }
     }
 

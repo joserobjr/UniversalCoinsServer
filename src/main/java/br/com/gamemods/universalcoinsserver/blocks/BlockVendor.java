@@ -3,7 +3,6 @@ package br.com.gamemods.universalcoinsserver.blocks;
 import br.com.gamemods.universalcoinsserver.GuiHandler;
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.tile.TileVendor;
-import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.EntityLivingBase;
@@ -17,7 +16,7 @@ import net.minecraft.world.World;
 
 import java.util.UUID;
 
-public class BlockVendor extends BlockContainer
+public class BlockVendor extends BlockOwned
 {
     public BlockVendor(CreativeTabs creativeTabs)
     {
@@ -94,33 +93,9 @@ public class BlockVendor extends BlockContainer
     }
 
     @Override
-    public boolean removedByPlayer(World world, EntityPlayer player, int x, int y, int z, boolean willHarvest)
+    public float getNormalHardness()
     {
-        if (player.capabilities.isCreativeMode)
-            return super.removedByPlayer(world, player, x, y, z, willHarvest);
-
-        TileVendor tile;
-        {
-            TileEntity te = world.getTileEntity(x, y, z);
-            if (!(te instanceof TileVendor))
-                return true;
-            tile = (TileVendor) te;
-        }
-
-        return player.getPersistentID().equals(tile.owner) && super.removedByPlayer(world, player, x, y, z, willHarvest);
-    }
-
-    public void onBlockClicked(World world, int x, int y, int z, EntityPlayer player)
-    {
-        TileEntity tile = world.getTileEntity(x, y, z);
-        if((tile instanceof TileVendor) && player.getPersistentID().equals(((TileVendor)tile).owner))
-        {
-            this.setHardness(0.3F);
-        }
-        else
-        {
-            this.setHardness(-1.0F);
-        }
+        return 0.3f;
     }
 
     @Override

@@ -1,5 +1,6 @@
 package br.com.gamemods.universalcoinsserver.datastore;
 
+import br.com.gamemods.universalcoinsserver.tile.TileSignal;
 import br.com.gamemods.universalcoinsserver.tile.TileVendor;
 import net.minecraft.item.ItemStack;
 
@@ -35,6 +36,19 @@ public final class Transaction
         ownerCoinSource = ownerSource;
         trade = vendor.getStackInSlot(TileVendor.SLOT_TRADE).copy();
         this.product = product.copy();
+    }
+
+    public Transaction(TileSignal signal, Operation operation, int time, Operator operator,
+                       CoinSource userSource, CoinSource ownerSource)
+    {
+        this.operation = operation;
+        this.machine = signal;
+        this.operator = operator;
+        this.quantity = time;
+        this.userCoinSource = userSource;
+        this.ownerCoinSource = ownerSource;
+        this.price = signal.fee;
+        this.totalPrice = signal.fee;
     }
 
     public static abstract class CoinSource
@@ -129,6 +143,47 @@ public final class Transaction
                     ", machine=" + machine +
                     ", balanceBefore=" + balanceBefore +
                     '}';
+        }
+    }
+
+    public static class InventoryCoinSource extends CoinSource
+    {
+        private Operator operator;
+        private int balanceBefore;
+        private int balanceAfter;
+
+        public InventoryCoinSource(Operator operator, int balanceBefore, int increment)
+        {
+            this.operator = operator;
+            this.balanceBefore = balanceBefore;
+            this.balanceAfter = balanceBefore+increment;
+        }
+
+        public Operator getOperator()
+        {
+            return operator;
+        }
+
+        @Override
+        public int getBalanceBefore()
+        {
+            return balanceBefore;
+        }
+
+        @Override
+        public int getBalanceAfter()
+        {
+            return balanceAfter;
+        }
+
+        @Override
+        public String toString()
+        {
+            return "InventoryCoinSource{" +
+                    "operator=" + operator +
+                    ", balanceBefore=" + balanceBefore +
+                    ", balanceAfter=" + balanceAfter +
+                    "} " + super.toString();
         }
     }
 

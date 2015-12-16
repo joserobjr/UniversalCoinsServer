@@ -27,7 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-public class TileVendor extends TileEntity implements IInventory, PlayerOwned, Machine
+public class TileVendor extends TileTransactionMachine implements IInventory, PlayerOwned
 {
     public static final int SLOT_STORAGE_FIST = 0;
     public static final int SLOT_STORAGE_LAST = 8;
@@ -51,7 +51,6 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
 
     private ItemStack[] inventory = new ItemStack[17];
 
-    private UUID machineId;
     public String ownerName;
     public UUID owner;
     public int ownerCoins;
@@ -74,30 +73,6 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
         updateWithdrawButtons(true);
         updateWithdrawButtons(false);
         updateOperations();
-    }
-
-    @Override
-    public TileEntity getMachineEntity()
-    {
-        return this;
-    }
-
-    @Override
-    public UUID getMachineId()
-    {
-        if(machineId == null)
-        {
-            machineId = UUID.randomUUID();
-            try
-            {
-                UniversalCoinsServer.cardDb.saveNewMachine(this);
-            }
-            catch (DataBaseException e)
-            {
-                UniversalCoinsServer.logger.error("Failed to save machine ID "+machineId, e);
-            }
-        }
-        return machineId;
     }
 
     @Override
@@ -151,7 +126,6 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
         compound.setInteger("remoteX", 0);
         compound.setInteger("remoteY", 0);
         compound.setInteger("remoteZ", 0);
-        compound.setString("MachineId", getMachineId().toString());
     }
 
     @Override
@@ -181,17 +155,6 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
             catch (Exception e)
             {
                 owner = null;
-            }
-
-        str = compound.getString("MachineId");
-        if(str.isEmpty()) getMachineId();
-            try
-            {
-                machineId = UUID.fromString(str);
-            }
-            catch (Exception e)
-            {
-                getMachineId();
             }
 
         ownerCoins = compound.getInteger("CoinSum");
@@ -547,12 +510,6 @@ public class TileVendor extends TileEntity implements IInventory, PlayerOwned, M
     public boolean isItemValidForSlot(int slot, ItemStack stack)
     {
         return false;
-    }
-
-    public void scheduleUpdate()
-    {
-        if(worldObj != null)
-            worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
     }
 
     public void updateBlocks()
