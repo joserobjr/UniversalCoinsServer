@@ -2,7 +2,9 @@ package br.com.gamemods.universalcoinsserver.blocks;
 
 import br.com.gamemods.universalcoinsserver.GuiHandler;
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
+import br.com.gamemods.universalcoinsserver.api.UniversalCoinsServerAPI;
 import br.com.gamemods.universalcoinsserver.tile.TileSlots;
+import net.minecraft.block.Block;
 import net.minecraft.block.material.MapColor;
 import net.minecraft.block.material.Material;
 import net.minecraft.creativetab.CreativeTabs;
@@ -13,6 +15,8 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.world.World;
 
+import java.util.List;
+
 public class BlockSlots extends BlockRotary
 {
     public BlockSlots(CreativeTabs creativeTabs)
@@ -22,6 +26,28 @@ public class BlockSlots extends BlockRotary
         setCreativeTab(creativeTabs);
         setResistance(30.0F);
         setBlockName("blockBandit");
+    }
+
+    @Override
+    public void breakBlock(World world, int x, int y, int z, Block block, int metadata)
+    {
+        TileEntity tileEntity = world.getTileEntity(x,y,z);
+        if(tileEntity instanceof TileSlots)
+        {
+            TileSlots tile = (TileSlots) tileEntity;
+            List<ItemStack> drops = UniversalCoinsServerAPI.createStacks(tile.userCoins);
+            int size = tile.getSizeInventory();
+            for(int i = 0; i < size; i++)
+            {
+                ItemStack stack = tile.getStackInSlot(i);
+                if(stack != null)
+                    drops.add(stack);
+            }
+
+            drop(world, x,y,z, drops);
+        }
+
+        super.breakBlock(world, x, y, z, block, metadata);
     }
 
     @Override
