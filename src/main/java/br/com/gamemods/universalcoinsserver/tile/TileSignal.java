@@ -4,13 +4,13 @@ import br.com.gamemods.universalcoinsserver.GuiHandler;
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.api.ScanResult;
 import br.com.gamemods.universalcoinsserver.api.UniversalCoinsServerAPI;
-import br.com.gamemods.universalcoinsserver.blocks.PlayerOwned;
 import br.com.gamemods.universalcoinsserver.datastore.PlayerOperator;
 import br.com.gamemods.universalcoinsserver.datastore.Transaction;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.network.NetworkManager;
@@ -21,9 +21,8 @@ import net.minecraftforge.common.util.Constants;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.UUID;
 
-public class TileSignal extends TileTransactionMachine implements PlayerOwned
+public class TileSignal extends TileOwned
 {
     public static final int SLOT_COIN_OUTPUT = 0;
     public static final int BUTTON_WITHDRAW = 0;
@@ -34,8 +33,6 @@ public class TileSignal extends TileTransactionMachine implements PlayerOwned
 
     private ItemStack coinOutput = null;
     public boolean providingPower;
-    public UUID owner;
-    public String ownerName;
     public int coins;
     public int fee = 1;
     public int duration = 1;
@@ -227,17 +224,51 @@ public class TileSignal extends TileTransactionMachine implements PlayerOwned
     }
 
     @Override
-    public UUID getOwnerId()
+    public String getOwnerIdNBTKey()
     {
-        return owner;
+        return "blockOwner";
+    }
+
+    @Override
+    public void writeToStackNBT(NBTTagCompound compound)
+    {
+        String[] copy = new String[]{
+                "Inventory",
+                "coinSum",
+                "fee",
+                "duration",
+                "secondsLeft",
+                "ticks"
+        };
+
+        NBTTagCompound base = new NBTTagCompound();
+        writeToNBT(base);
+
+        for(String key: copy)
+        {
+            NBTBase tag = base.getTag(key);
+            if(tag != null)
+                compound.setTag(key, tag);
+        }
+    }
+
+    @Override
+    public void readFromStackNBT(NBTTagCompound compound)
+    {
+        coins = compound.getInteger("coinSum");
+        fee = compound.getInteger("fee");
+        duration = compound.getInteger("duration");
+        ticks = compound.getInteger("ticks");
+        providingPower = ticks > 0;
+        secondsLeft = ticks <= 0? 0 : (ticks+20)/20;
+        validateFields();
+        updateNeighbors();
     }
 
     @Override
     public void writeToNBT(NBTTagCompound compound)
     {
         super.writeToNBT(compound);
-        if(ownerName != null) compound.setString("OwnerName", ownerName);
-        if(owner != null) compound.setString("blockOwner", owner.toString());
 
         NBTTagList itemList = new NBTTagList();
         ItemStack stack = coinOutput == null? new ItemStack(Blocks.air,0) : coinOutput;
@@ -261,19 +292,6 @@ public class TileSignal extends TileTransactionMachine implements PlayerOwned
     {
         super.readFromNBT(compound);
         ticks = compound.getInteger("ticks");
-        ownerName = compound.getString("OwnerName");
-        String str = compound.getString("blockOwner");
-        if(str.isEmpty())
-            owner = null;
-        else
-            try
-            {
-                owner = UUID.fromString(str);
-            }
-            catch (Exception e)
-            {
-                owner = null;
-            }
 
         NBTTagList tagList = compound.getTagList("Inventory", Constants.NBT.TAG_COMPOUND);
         coinOutput = null;

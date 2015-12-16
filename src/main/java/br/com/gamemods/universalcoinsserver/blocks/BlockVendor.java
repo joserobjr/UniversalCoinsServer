@@ -7,7 +7,6 @@ import br.com.gamemods.universalcoinsserver.tile.TileVendor;
 import net.minecraft.block.material.Material;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.ContainerPlayer;
 import net.minecraft.item.Item;
@@ -18,7 +17,6 @@ import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
-import java.util.UUID;
 
 public class BlockVendor extends BlockOwned
 {
@@ -114,20 +112,27 @@ public class BlockVendor extends BlockOwned
         if(tile != null)
         {
             NBTTagCompound tagCompound = stack.stackTagCompound;
-            if (tagCompound == null) tagCompound = new NBTTagCompound();
-
-            String string = tagCompound.getString("BlockOwner");
-            if (!string.isEmpty())
-                try
+            try
+            {
+                tile.setWorldObj(world);
+                if(tagCompound != null)
                 {
-                    tile.owner = UUID.fromString(string);
+                    try
+                    {
+                        tile.readFromStackNBT(tagCompound);
+                    }
+                    catch (Exception e)
+                    {
+                        e.printStackTrace();
+                    }
                 }
-                catch (Exception e)
-                {
-                    tile.owner = entity.getPersistentID();
-                }
-            else
+            }
+            finally
+            {
                 tile.owner = entity.getPersistentID();
+                tile.ownerName = entity.getCommandSenderName();
+                tile.scheduleUpdate();
+            }
 
             world.markBlockForUpdate(x,y,z);
         }
@@ -142,121 +147,115 @@ public class BlockVendor extends BlockOwned
     }
 
     @Override
-    public boolean removedByPlayer(World world, EntityPlayer player, int x, int y, int z, boolean willHarvest)
+    public ArrayList<ItemStack> dropEverythingToList(World world, int x, int y, int z)
     {
-        if(!willHarvest)
+        TileVendor vendor;
         {
-            TileVendor vendor;
-            {
-                TileEntity tileEntity = world.getTileEntity(x,y,z);
-                if(!(tileEntity instanceof TileVendor))
-                    return super.removedByPlayer(world, player, x, y, z, false);
-                vendor = (TileVendor) tileEntity;
-            }
-
-            ArrayList<ItemStack> drops = new ArrayList<>();
-            if(vendor.userCoins > 0)
-                drops.addAll(UniversalCoinsServerAPI.createStacks(vendor.userCoins));
-            if(vendor.ownerCoins > 0)
-                drops.addAll(UniversalCoinsServerAPI.createStacks(vendor.ownerCoins));
-            int sizeInventory = vendor.getSizeInventory();
-            for(int i = 0; i < sizeInventory; i++)
-            {
-                if(i == TileVendor.SLOT_COIN_OUTPUT || i == TileVendor.SLOT_TRADE)
-                    continue;
-                ItemStack stackInSlot = vendor.getStackInSlot(i);
-                if(stackInSlot != null)
-                    drops.add(stackInSlot);
-            }
-
-            if(!super.removedByPlayer(world, player, x, y, z, false))
-                return false;
-
-            for(ItemStack drop: drops)
-            {
-                EntityItem item = new EntityItem(world, x,y+0.5f,z, drop);
-                world.spawnEntityInWorld(item);
-            }
-
-            return true;
+            TileEntity tileEntity = world.getTileEntity(x,y,z);
+            if(!(tileEntity instanceof TileVendor))
+                return new ArrayList<>(0);
+            vendor = (TileVendor) tileEntity;
         }
 
-        return super.removedByPlayer(world, player, x, y, z, true);
+        ArrayList<ItemStack> drops = new ArrayList<>();
+        if(vendor.userCoins > 0)
+            drops.addAll(UniversalCoinsServerAPI.createStacks(vendor.userCoins));
+        vendor.userCoins = 0;
+
+        if(vendor.ownerCoins > 0)
+            drops.addAll(UniversalCoinsServerAPI.createStacks(vendor.ownerCoins));
+        vendor.ownerCoins = 0;
+
+        int sizeInventory = vendor.getSizeInventory();
+        for(int i = 0; i < sizeInventory; i++)
+        {
+            if(i == TileVendor.SLOT_TRADE)
+                continue;
+
+            ItemStack stackInSlot = vendor.getStackInSlot(i);
+            if(stackInSlot != null)
+            {
+                drops.add(stackInSlot);
+                vendor.setInventorySlotContents(i, null);
+            }
+        }
+
+        return drops;
     }
 
     @Override
-    public ArrayList<ItemStack> getDrops(World world, int x, int y, int z, int metadata, int fortune)
+    public ArrayList<ItemStack> dropNonOwnerContentToList(World world, int x, int y, int z)
     {
         TileVendor tile;
+        TileEntity tileEntity = world.getTileEntity(x, y, z);
+        if(!(tileEntity instanceof TileVendor))
+            return new ArrayList<>(0);
+        tile = (TileVendor) tileEntity;
+
+        ArrayList<ItemStack> drops = new ArrayList<>();
+        if(tile.userCoins > 0)
+            drops.addAll(UniversalCoinsServerAPI.createStacks(tile.userCoins));
+        tile.userCoins = 0;
+
+        int[] slots = new int[]{
+                TileVendor.SLOT_USER_CARD,
+                TileVendor.SLOT_USER_COIN_INPUT,
+                TileVendor.SLOT_SELL
+        };
+
+        for(int slot: slots)
         {
-            TileEntity tileEntity = world.getTileEntity(x, y, z);
-            if(!(tileEntity instanceof TileVendor))
-                return super.getDrops(world, x, y, z, metadata, fortune);
-            tile = (TileVendor) tileEntity;
-
-            if(tile.ownerCoins == 0
-                    && tile.getStackInSlot(TileVendor.SLOT_OWNER_CARD) == null
-                    && tile.getStackInSlot(TileVendor.SLOT_OWNER_COIN_INPUT) == null
-                    && tile.getStackInSlot(TileVendor.SLOT_COIN_OUTPUT) == null
-            ){
-                boolean empty = true;
-                for(int i = TileVendor.SLOT_STORAGE_FIST; i <= TileVendor.SLOT_STORAGE_LAST; i++)
-                    if(tile.getStackInSlot(i) != null)
-                    {
-                        empty = false;
-                        break;
-                    }
-
-                if(empty)
-                {
-                    ArrayList<ItemStack> drops = super.getDrops(world, x, y, z, metadata, fortune);
-                    if(tile.userCoins > 0)
-                        drops.addAll(UniversalCoinsServerAPI.createStacks(tile.userCoins));
-
-                    ItemStack stack = tile.getStackInSlot(TileVendor.SLOT_USER_CARD);
-                    if(stack != null) drops.add(stack);
-
-                    stack = tile.getStackInSlot(TileVendor.SLOT_USER_COIN_INPUT);
-                    if(stack != null) drops.add(stack);
-                    return drops;
-                }
+            ItemStack stack = tile.getStackInSlot(slot);
+            if(stack != null)
+            {
+                drops.add(stack);
+                tile.setInventorySlotContents(slot, null);
             }
         }
 
-        ArrayList<ItemStack> ret = new ArrayList<>(3);
+        return drops;
+    }
 
-        Item item = getItemDropped(metadata, world.rand, fortune);
+    @Override
+    public ArrayList<ItemStack> dropToStack(World world, int x, int y, int z, int fortune)
+    {
+        TileVendor tile;
+        TileEntity tileEntity = world.getTileEntity(x, y, z);
+        if(!(tileEntity instanceof TileVendor))
+            return super.dropToStack(world, x, y, z, fortune);
+        tile = (TileVendor) tileEntity;
+
+        boolean empty = tile.ownerCoins == 0
+                && tile.getStackInSlot(TileVendor.SLOT_OWNER_CARD) == null
+                && tile.getStackInSlot(TileVendor.SLOT_OWNER_COIN_INPUT) == null
+                && tile.getStackInSlot(TileVendor.SLOT_COIN_OUTPUT) == null;
+        if(empty)
+        {
+            for(int i = TileVendor.SLOT_STORAGE_FIST; i <= TileVendor.SLOT_STORAGE_LAST; i++)
+                if(tile.getStackInSlot(i) != null)
+                {
+                    empty = false;
+                    break;
+                }
+        }
+
+        ArrayList<ItemStack> drops = new ArrayList<>(1);
+
+        int metadata = world.getBlockMetadata(x,y,z);
+
+        Item item = getItemDropped(metadata, random, fortune);
         if (item != null)
         {
             ItemStack stack = new ItemStack(item, 1, damageDropped(metadata));
-            if(stack.stackTagCompound == null)
-                stack.stackTagCompound = new NBTTagCompound();
-
-            ret.add(stack);
-
-            if(tile.userCoins > 0)
+            drops.add(stack);
+            if(!empty)
             {
-                ret.addAll(UniversalCoinsServerAPI.createStacks(tile.userCoins));
-                tile.userCoins = 0;
+                NBTTagCompound tileData = new NBTTagCompound();
+                tile.writeToStackNBT(tileData);
+                stack.stackTagCompound = tileData;
             }
-
-            ItemStack userStack = tile.getStackInSlot(TileVendor.SLOT_USER_CARD);
-            if(userStack != null)
-            {
-                ret.add(stack);
-                tile.setInventorySlotContents(TileVendor.SLOT_USER_CARD, null);
-            }
-
-            userStack = tile.getStackInSlot(TileVendor.SLOT_USER_COIN_INPUT);
-            if(userStack != null)
-            {
-                ret.add(stack);
-                tile.setInventorySlotContents(TileVendor.SLOT_USER_COIN_INPUT, null);
-            }
-
-            tile.writeToNBT(stack.stackTagCompound);
         }
 
-        return ret;
+        return drops;
     }
 }

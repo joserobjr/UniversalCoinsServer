@@ -1,7 +1,6 @@
 package br.com.gamemods.universalcoinsserver.tile;
 
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
-import br.com.gamemods.universalcoinsserver.blocks.PlayerOwned;
 import br.com.gamemods.universalcoinsserver.datastore.*;
 import br.com.gamemods.universalcoinsserver.item.ItemCoin;
 import net.minecraft.enchantment.Enchantment;
@@ -11,6 +10,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.network.NetworkManager;
@@ -26,7 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-public class TileVendor extends TileTransactionMachine implements PlayerOwned
+public class TileVendor extends TileOwned
 {
     public static final int SLOT_STORAGE_FIST = 0;
     public static final int SLOT_STORAGE_LAST = 8;
@@ -50,8 +50,6 @@ public class TileVendor extends TileTransactionMachine implements PlayerOwned
 
     private ItemStack[] inventory = new ItemStack[17];
 
-    public String ownerName;
-    public UUID owner;
     public int ownerCoins;
     public int userCoins;
     public int price;
@@ -73,6 +71,64 @@ public class TileVendor extends TileTransactionMachine implements PlayerOwned
         updateWithdrawButtons(false);
         updateOperations();
     }
+
+    @Override
+    public void writeToStackNBT(NBTTagCompound compound)
+    {
+        String[] copy = new String[]{
+                "Inventory",
+                "UserCoinSum",
+                //"OwnerName",
+                "Mode",
+                "CoinSum",
+                "BlockIcon",
+                "ItemPrice",
+                "TextColor"
+                //"BlockOwner",
+                //"MachineId"
+        };
+
+        NBTTagCompound base = new NBTTagCompound();
+        writeToNBT(base);
+
+        for(String key: copy)
+        {
+            NBTBase tag = base.getTag(key);
+            if(tag != null)
+                compound.setTag(key, tag);
+        }
+    }
+
+    @Override
+    public void readFromStackNBT(NBTTagCompound compound)
+    {
+        readInventoryFromNBT(compound.getTagList("Inventory", Constants.NBT.TAG_COMPOUND));
+        userCoins = compound.getInteger("UserCoinSum");
+        sellToUser = compound.getBoolean("Mode");
+        ownerCoins = compound.getInteger("CoinSum");
+        icon = compound.getString("BlockIcon");
+        price = compound.getInteger("ItemPrice");
+        textColor = (byte) compound.getInteger("TextColor");
+        validateFields();
+    }
+
+    public void readInventoryFromNBT(NBTTagList tagList)
+    {
+        Arrays.fill(inventory, null);
+        if(tagList == null)
+            return;
+
+        for (int i = 0; i < tagList.tagCount(); i++)
+        {
+            NBTTagCompound tag = tagList.getCompoundTagAt(i);
+            byte slot = tag.getByte("Slot");
+            if (slot >= 0 && slot < inventory.length)
+            {
+                inventory[slot] = ItemStack.loadItemStackFromNBT(tag);
+            }
+        }
+    }
+
 
     @Override
     public void writeToNBT(NBTTagCompound compound)
@@ -98,10 +154,6 @@ public class TileVendor extends TileTransactionMachine implements PlayerOwned
         compound.setInteger("CoinSum", ownerCoins);
         compound.setInteger("UserCoinSum", userCoins);
         compound.setInteger("ItemPrice", price);
-        if(ownerName != null && !ownerName.isEmpty())
-            compound.setString("OwnerName", ownerName);
-        if(owner != null)
-            compound.setString("BlockOwner", owner.toString());
         compound.setBoolean("Infinite", infinite);
         compound.setBoolean("Mode", sellToUser);
         compound.setBoolean("OutOfStock", outOfStock);
@@ -133,28 +185,7 @@ public class TileVendor extends TileTransactionMachine implements PlayerOwned
         super.readFromNBT(compound);
 
         NBTTagList tagList = compound.getTagList("Inventory", Constants.NBT.TAG_COMPOUND);
-        for (int i = 0; i < tagList.tagCount(); i++)
-        {
-            NBTTagCompound tag = tagList.getCompoundTagAt(i);
-            byte slot = tag.getByte("Slot");
-            if (slot >= 0 && slot < inventory.length)
-            {
-                inventory[slot] = ItemStack.loadItemStackFromNBT(tag);
-            }
-        }
-
-        ownerName = compound.getString("OwnerName");
-        String str = compound.getString("BlockOwner");
-        if(str.isEmpty()) owner = null;
-        else
-            try
-            {
-                owner = UUID.fromString(str);
-            }
-            catch (Exception e)
-            {
-                owner = null;
-            }
+        readInventoryFromNBT(tagList);
 
         ownerCoins = compound.getInteger("CoinSum");
         userCoins = compound.getInteger("UserCoinSum");
@@ -1219,12 +1250,6 @@ public class TileVendor extends TileTransactionMachine implements PlayerOwned
     {
         if(player.isEntityEqual(opener))
             opener = null;
-    }
-
-    @Override
-    public UUID getOwnerId()
-    {
-        return owner;
     }
 
     @Override

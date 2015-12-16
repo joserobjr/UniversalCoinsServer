@@ -1,15 +1,21 @@
 package br.com.gamemods.universalcoinsserver.blocks;
 
+import br.com.gamemods.universalcoinsserver.api.UniversalCoinsServerAPI;
 import br.com.gamemods.universalcoinsserver.tile.TileSignal;
 import net.minecraft.block.material.MapColor;
 import net.minecraft.block.material.Material;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class BlockSignal extends BlockOwned
 {
@@ -21,6 +27,74 @@ public class BlockSignal extends BlockOwned
         setResistance(30.0F);
         setBlockTextureName("universalcoins:blockSignal");
         setBlockName("blockSignal");
+    }
+
+    @Override
+    public ArrayList<ItemStack> dropEverythingToList(World world, int x, int y, int z)
+    {
+        TileEntity tileEntity = world.getTileEntity(x,y,z);
+        if(!(tileEntity instanceof TileSignal))
+            return new ArrayList<>(0);
+
+        TileSignal signal = (TileSignal) tileEntity;
+
+        List<ItemStack> stacks = UniversalCoinsServerAPI.createStacks(signal.coins);
+        int size = signal.getSizeInventory();
+        ArrayList<ItemStack> drops = new ArrayList<>(stacks.size()+size);
+        drops.addAll(stacks);
+        signal.coins = 0;
+
+        for(int i = 0; i < size; i++)
+        {
+            ItemStack stackInSlot = signal.getStackInSlot(i);
+            if(stackInSlot != null)
+            {
+                signal.setInventorySlotContents(i, null);
+                drops.add(stackInSlot);
+            }
+        }
+
+        return drops;
+    }
+
+    @Override
+    public ArrayList<ItemStack> dropToStack(World world, int x, int y, int z, int fortune)
+    {
+        TileEntity tileEntity = world.getTileEntity(x,y,z);
+        if(!(tileEntity instanceof TileSignal))
+            return super.dropToStack(world, x, y, z, fortune);
+        TileSignal signal = (TileSignal) tileEntity;
+
+        boolean empty = signal.coins == 0 && signal.ticks <= 0 && signal.fee == 1 && signal.duration == 1;
+        if(empty)
+        {
+            int size = signal.getSizeInventory();
+            for(int i = 0; i < size; i++)
+                if(signal.getStackInSlot(i) != null)
+                {
+                    empty = false;
+                    break;
+                }
+        }
+
+        ArrayList<ItemStack> drops = new ArrayList<>(1);
+
+        int metadata = world.getBlockMetadata(x,y,z);
+
+        Item item = getItemDropped(metadata, random, fortune);
+        if (item != null)
+        {
+            ItemStack stack = new ItemStack(item, 1, damageDropped(metadata));
+            drops.add(stack);
+            if(!empty)
+            {
+                NBTTagCompound tileData = new NBTTagCompound();
+                signal.writeToStackNBT(tileData);
+                stack.stackTagCompound = tileData;
+            }
+        }
+
+        return drops;
     }
 
     @Override
@@ -69,8 +143,19 @@ public class BlockSignal extends BlockOwned
         if(te instanceof TileSignal)
         {
             TileSignal tile = (TileSignal) te;
-            tile.owner = player.getPersistentID();
-            tile.ownerName = player.getCommandSenderName();
+            try
+            {
+                if(stack.hasTagCompound())
+                {
+                    tile.setWorldObj(world);
+                    tile.readFromStackNBT(stack.stackTagCompound);
+                }
+            }
+            finally
+            {
+                tile.owner = player.getPersistentID();
+                tile.ownerName = player.getCommandSenderName();
+            }
             tile.markDirty();
         }
     }
