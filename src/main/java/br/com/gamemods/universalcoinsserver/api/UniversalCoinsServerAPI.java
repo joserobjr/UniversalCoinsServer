@@ -339,7 +339,11 @@ public class UniversalCoinsServerAPI
     {
         ArrayList<ItemStack> stacks = new ArrayList<>();
         while (coins > 0)
-            stacks.add(createBestStack(coins));
+        {
+            ItemStack bestStack = createBestStack(coins);
+            stacks.add(bestStack);
+            coins -= stackValue(bestStack);
+        }
         return stacks;
     }
 
