@@ -24,10 +24,10 @@ public class UniversalCoinsServerAPI
 
     @Nonnull
     public static ScanResult scanCoins(@Nonnull IInventory inventory, int startIndex, int endIndex)
-            throws NullPointerException, ArrayIndexOutOfBoundsException
+            throws NullPointerException, IndexOutOfBoundsException
     {
-        if(startIndex < 0) throw new ArrayIndexOutOfBoundsException("startIndex < 0: "+startIndex);
-        else if(startIndex > endIndex) throw new ArrayIndexOutOfBoundsException("startIndex > endIndex: start:"+startIndex+" end:"+endIndex);
+        if(startIndex < 0) throw new IndexOutOfBoundsException("startIndex < 0: "+startIndex);
+        else if(startIndex > endIndex) throw new IndexOutOfBoundsException("startIndex > endIndex: start:"+startIndex+" end:"+endIndex);
 
         TreeMap<Integer, SortedMap<Integer, SortedSet<Integer>>> coinMap = new TreeMap<>();
         int total = 0;
@@ -122,7 +122,7 @@ public class UniversalCoinsServerAPI
     }
 
     public static int addCoins(@Nonnull IInventory inventory, int coins, int startIndex, int endIndex)
-            throws IllegalArgumentException, NullPointerException, ArrayIndexOutOfBoundsException
+            throws IllegalArgumentException, NullPointerException, IndexOutOfBoundsException
     {
         return addCoins(scanCoins(inventory, startIndex, endIndex), coins);
     }
@@ -190,12 +190,12 @@ public class UniversalCoinsServerAPI
     }
 
     public static int addCoinsAnywhere(@Nonnull IInventory inventory, int coins, int startIndex, int endIndex)
-            throws NullPointerException, IllegalArgumentException, ArrayIndexOutOfBoundsException
+            throws NullPointerException, IllegalArgumentException, IndexOutOfBoundsException
     {
         if(coins == 0) return 0;
         else if(coins < 0) throw new IllegalArgumentException("coins < 0: "+coins);
-        else if(startIndex < 0) throw new ArrayIndexOutOfBoundsException("startIndex < 0: "+startIndex);
-        else if(startIndex > endIndex) throw new ArrayIndexOutOfBoundsException("startIndex > endIndex: start:"+startIndex+" end:"+endIndex);
+        else if(startIndex < 0) throw new IndexOutOfBoundsException("startIndex < 0: "+startIndex);
+        else if(startIndex > endIndex) throw new IndexOutOfBoundsException("startIndex > endIndex: start:"+startIndex+" end:"+endIndex);
 
         int inventoryStackLimit = inventory.getInventoryStackLimit();
 
@@ -242,10 +242,10 @@ public class UniversalCoinsServerAPI
     }
 
     public static int rebalance(@Nonnull IInventory inventory, int startIndex, int endIndex)
-            throws NullPointerException, ArrayIndexOutOfBoundsException
+            throws NullPointerException, IndexOutOfBoundsException
     {
-        if(startIndex < 0) throw new ArrayIndexOutOfBoundsException("startIndex < 0: "+startIndex);
-        else if(startIndex > endIndex) throw new ArrayIndexOutOfBoundsException("startIndex > endIndex: start:"+startIndex+" end:"+endIndex);
+        if(startIndex < 0) throw new IndexOutOfBoundsException("startIndex < 0: "+startIndex);
+        else if(startIndex > endIndex) throw new IndexOutOfBoundsException("startIndex > endIndex: start:"+startIndex+" end:"+endIndex);
 
         long balance = 0;
         for(int slot = startIndex; slot < endIndex; slot++)
