@@ -35,7 +35,8 @@ public final class Transaction
         totalPrice = price * quantity;
         userCoinSource = userSource;
         ownerCoinSource = ownerSource;
-        trade = vendor.getStackInSlot(TileVendor.SLOT_TRADE).copy();
+        trade = vendor.getStackInSlot(TileVendor.SLOT_TRADE);
+        if(trade != null) trade = trade.copy();
         this.product = product.copy();
     }
 
