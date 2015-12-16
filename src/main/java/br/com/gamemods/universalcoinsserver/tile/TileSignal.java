@@ -9,6 +9,7 @@ import br.com.gamemods.universalcoinsserver.datastore.PlayerOperator;
 import br.com.gamemods.universalcoinsserver.datastore.Transaction;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -55,7 +56,13 @@ public class TileSignal extends TileTransactionMachine implements PlayerOwned, I
         if(fee < 0) fee = 1;
         if(duration < 0) duration = 1;
         if(secondsLeft < 0) secondsLeft = 0;
-        if(hash != stateHashcode())
+
+        if(coinOutput != null && coinOutput.stackSize <= 0)
+        {
+            coinOutput = null;
+            markDirty();
+        }
+        else if(hash != stateHashcode())
             markDirty();
     }
 
@@ -226,12 +233,11 @@ public class TileSignal extends TileTransactionMachine implements PlayerOwned, I
         if(owner != null) compound.setString("blockOwner", owner.toString());
 
         NBTTagList itemList = new NBTTagList();
-        if (coinOutput != null) {
-            NBTTagCompound tag = new NBTTagCompound();
-            tag.setByte("Slot", (byte) SLOT_COIN_OUTPUT);
-            coinOutput.writeToNBT(tag);
-            itemList.appendTag(tag);
-        }
+        ItemStack stack = coinOutput == null? new ItemStack(Blocks.air,0) : coinOutput;
+        NBTTagCompound tag = new NBTTagCompound();
+        tag.setByte("Slot", (byte) SLOT_COIN_OUTPUT);
+        stack.writeToNBT(tag);
+        itemList.appendTag(tag);
 
         compound.setTag("Inventory", itemList);
         compound.setInteger("coinSum", coins);
@@ -323,10 +329,11 @@ public class TileSignal extends TileTransactionMachine implements PlayerOwned, I
     public void setInventorySlotContents(int slot, ItemStack stack)
     {
         if(slot != 0) throw new ArrayIndexOutOfBoundsException(slot);
-        if(unlockOutputSlot)
+        if(unlockOutputSlot || stack == null)
             coinOutput = stack;
         else
             throw new UnsupportedOperationException();
+        markDirty();
     }
 
     @Override
