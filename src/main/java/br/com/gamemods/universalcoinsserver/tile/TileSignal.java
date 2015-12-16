@@ -8,6 +8,7 @@ import br.com.gamemods.universalcoinsserver.blocks.PlayerOwned;
 import br.com.gamemods.universalcoinsserver.datastore.PlayerOperator;
 import br.com.gamemods.universalcoinsserver.datastore.Transaction;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -25,6 +26,11 @@ import java.util.UUID;
 public class TileSignal extends TileTransactionMachine implements PlayerOwned, IInventory
 {
     public static final int SLOT_COIN_OUTPUT = 0;
+    public static final int BUTTON_WITHDRAW = 0;
+    public static final int BUTTON_DURATION_MINUS = 1;
+    public static final int BUTTON_DURATION_PLUS = 2;
+    public static final int BUTTON_FEE_MINUS = 3;
+    public static final int BUTTON_FEE_PLUS = 4;
 
     private ItemStack coinOutput = null;
     public boolean providingPower;
@@ -35,6 +41,7 @@ public class TileSignal extends TileTransactionMachine implements PlayerOwned, I
     public int duration = 1;
     public int secondsLeft;
     public int ticks;
+    private boolean unlockOutputSlot;
 
     public int stateHashcode()
     {
@@ -128,6 +135,61 @@ public class TileSignal extends TileTransactionMachine implements PlayerOwned, I
     }
 
     @Override
+    public void onButtonPressed(EntityPlayerMP player, int buttonId, boolean shiftPressed)
+    {
+        if(!player.getPersistentID().equals(owner))
+            return;
+
+        switch (buttonId)
+        {
+            case BUTTON_DURATION_MINUS:
+                if (shiftPressed)
+                    duration -= 10;
+                else
+                    duration--;
+                if(duration <= 0)
+                    duration = 1;
+                markDirty();
+                return;
+            case BUTTON_DURATION_PLUS:
+                if(shiftPressed)
+                    duration += 10;
+                else
+                    duration++;
+                markDirty();
+                return;
+            case BUTTON_FEE_MINUS:
+                if(shiftPressed)
+                    fee -= 10;
+                else
+                    fee--;
+                if(fee < 0)
+                    fee = 0;
+                markDirty();
+                return;
+            case BUTTON_FEE_PLUS:
+                if(shiftPressed)
+                    fee += 10;
+                else
+                    fee++;
+                markDirty();
+                return;
+            case BUTTON_WITHDRAW:
+                try
+                {
+                    unlockOutputSlot = true;
+                    coins = UniversalCoinsServerAPI.addCoinsAnywhere(this, coins);
+                }
+                finally
+                {
+                    unlockOutputSlot = false;
+                }
+
+                markDirty();
+        }
+    }
+
+    @Override
     public void markDirty()
     {
         scheduleUpdate();
@@ -145,7 +207,7 @@ public class TileSignal extends TileTransactionMachine implements PlayerOwned, I
     {
         super.writeToNBT(compound);
         if(ownerName != null) compound.setString("OwnerName", ownerName);
-        if(owner != null) compound.setString("ownerId", owner.toString());
+        if(owner != null) compound.setString("blockOwner", owner.toString());
 
         NBTTagList itemList = new NBTTagList();
         if (coinOutput != null) {
@@ -243,7 +305,13 @@ public class TileSignal extends TileTransactionMachine implements PlayerOwned, I
 
     @Override
     public void setInventorySlotContents(int slot, ItemStack stack)
-    {}
+    {
+        if(slot != 0) throw new ArrayIndexOutOfBoundsException(slot);
+        if(unlockOutputSlot)
+            coinOutput = stack;
+        else
+            throw new UnsupportedOperationException();
+    }
 
     @Override
     public String getInventoryName()
@@ -281,7 +349,7 @@ public class TileSignal extends TileTransactionMachine implements PlayerOwned, I
     @Override
     public boolean isItemValidForSlot(int slot, ItemStack stack)
     {
-        return false;
+        return unlockOutputSlot;
     }
 
     @Override

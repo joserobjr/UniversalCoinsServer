@@ -1,9 +1,7 @@
 package br.com.gamemods.universalcoinsserver;
 
-import br.com.gamemods.universalcoinsserver.container.ContainerVendor;
-import br.com.gamemods.universalcoinsserver.container.ContainerVendorBuy;
-import br.com.gamemods.universalcoinsserver.container.ContainerVendorSell;
-import br.com.gamemods.universalcoinsserver.container.ContainerVendorWrench;
+import br.com.gamemods.universalcoinsserver.container.*;
+import br.com.gamemods.universalcoinsserver.tile.TileSignal;
 import br.com.gamemods.universalcoinsserver.tile.TileVendor;
 import cpw.mods.fml.common.network.IGuiHandler;
 import net.minecraft.entity.player.EntityPlayer;
@@ -37,7 +35,8 @@ public class GuiHandler implements IGuiHandler
             case GUI_VENDOR_OWNER:
             case GUI_VENDOR_SELL:
             case GUI_VENDOR_BUY:
-                if(te instanceof TileVendor) {
+                if(te instanceof TileVendor)
+                {
                     TileVendor tile = (TileVendor) te;
                     switch (ID){
                         case GUI_VENDOR_WRENCH: return new ContainerVendorWrench(tile);
@@ -46,6 +45,10 @@ public class GuiHandler implements IGuiHandler
                         default: return new ContainerVendorBuy(player.inventory, tile);
                     }
                 }
+                else return null;
+            case GUI_SIGNAL:
+                if(te instanceof TileSignal)
+                    return new ContainerSignal(player.inventory, (TileSignal)te);
                 else return null;
             case GUI_TRADE_STATION:
             case GUI_ADV_SIGN:

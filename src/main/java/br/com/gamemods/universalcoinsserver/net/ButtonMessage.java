@@ -1,6 +1,6 @@
 package br.com.gamemods.universalcoinsserver.net;
 
-import br.com.gamemods.universalcoinsserver.tile.TileVendor;
+import br.com.gamemods.universalcoinsserver.tile.TileTransactionMachine;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
@@ -45,9 +45,8 @@ public class ButtonMessage implements IMessage, IMessageHandler<ButtonMessage, I
         if(te instanceof IInventory && !((IInventory) te).isUseableByPlayer(player))
             return null;
 
-        if (te instanceof TileVendor) {
-            ((TileVendor) te).onButtonPressed(player, message.buttonId, message.shiftPressed);
-        }
+        if (te instanceof TileTransactionMachine)
+            ((TileTransactionMachine) te).onButtonPressed(player, message.buttonId, message.shiftPressed);
 
         return null;
     }

@@ -3,6 +3,7 @@ package br.com.gamemods.universalcoinsserver.tile;
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.datastore.DataBaseException;
 import br.com.gamemods.universalcoinsserver.datastore.Machine;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 
@@ -70,4 +71,7 @@ public abstract class TileTransactionMachine extends TileEntity implements Machi
     {
         worldObj.notifyBlocksOfNeighborChange(xCoord, yCoord, zCoord, blockType);
     }
+
+    public void onButtonPressed(EntityPlayerMP player, int buttonId, boolean shiftPressed)
+    {}
 }
