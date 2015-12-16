@@ -10,7 +10,6 @@ import br.com.gamemods.universalcoinsserver.datastore.Transaction;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
-import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -24,7 +23,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.UUID;
 
-public class TileSignal extends TileTransactionMachine implements PlayerOwned, IInventory
+public class TileSignal extends TileTransactionMachine implements PlayerOwned
 {
     public static final int SLOT_COIN_OUTPUT = 0;
     public static final int BUTTON_WITHDRAW = 0;
@@ -132,6 +131,8 @@ public class TileSignal extends TileTransactionMachine implements PlayerOwned, I
         coins += fee;
 
         activate(duration * 20);
+
+        worldObj.playSoundEffect(xCoord, yCoord, zCoord, "universalcoins:insert_coin", 1.0F, 1.0F);
     }
 
     public void activate(int ticks)
@@ -198,6 +199,12 @@ public class TileSignal extends TileTransactionMachine implements PlayerOwned, I
                     try
                     {
                         UniversalCoinsServer.cardDb.saveTransaction(transaction);
+
+                        worldObj.playSoundEffect(xCoord, yCoord, zCoord,
+                                coins-before > 1?
+                                        "universalcoins:take_coins":
+                                        "universalcoins:take_coin"
+                                , 1.0F, 1.0F);
                     }
                     catch (Exception e)
                     {

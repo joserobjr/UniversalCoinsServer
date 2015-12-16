@@ -3,15 +3,37 @@ package br.com.gamemods.universalcoinsserver.tile;
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.datastore.DataBaseException;
 import br.com.gamemods.universalcoinsserver.datastore.Machine;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.inventory.IInventory;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 
 import java.util.UUID;
 
-public abstract class TileTransactionMachine extends TileEntity implements Machine
+public abstract class TileTransactionMachine extends TileEntity implements Machine, IInventory
 {
     private UUID machineId;
+    public EntityPlayer opener;
+
+    public boolean isInUse(EntityPlayer player)
+    {
+        if(opener == null)
+            return false;
+
+        if(!opener.isEntityAlive() || !isUseableByPlayer(opener))
+        {
+            opener = null;
+            return false;
+        }
+
+        return !opener.isEntityEqual(player);
+    }
+
+    public void setOpener(EntityPlayer opener)
+    {
+        this.opener = opener;
+    }
 
     @Override
     public UUID getMachineId()

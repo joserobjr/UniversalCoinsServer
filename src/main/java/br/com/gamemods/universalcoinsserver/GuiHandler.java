@@ -2,6 +2,7 @@ package br.com.gamemods.universalcoinsserver;
 
 import br.com.gamemods.universalcoinsserver.container.*;
 import br.com.gamemods.universalcoinsserver.tile.TileSignal;
+import br.com.gamemods.universalcoinsserver.tile.TileSlots;
 import br.com.gamemods.universalcoinsserver.tile.TileVendor;
 import cpw.mods.fml.common.network.IGuiHandler;
 import net.minecraft.entity.player.EntityPlayer;
@@ -45,6 +46,10 @@ public class GuiHandler implements IGuiHandler
                         default: return new ContainerVendorBuy(player.inventory, tile);
                     }
                 }
+                else return null;
+            case GUI_BANDIT:
+                if(te instanceof TileSlots)
+                    return new ContainerSlots(player.inventory, (TileSlots)te);
                 else return null;
             case GUI_SIGNAL:
                 if(te instanceof TileSignal)

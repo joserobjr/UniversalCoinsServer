@@ -9,7 +9,6 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
-import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -27,7 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-public class TileVendor extends TileTransactionMachine implements IInventory, PlayerOwned
+public class TileVendor extends TileTransactionMachine implements PlayerOwned
 {
     public static final int SLOT_STORAGE_FIST = 0;
     public static final int SLOT_STORAGE_LAST = 8;
@@ -302,6 +301,8 @@ public class TileVendor extends TileTransactionMachine implements IInventory, Pl
                         }
 
                         current += depositValue;
+
+                        worldObj.playSoundEffect(xCoord, yCoord, zCoord, "universalcoins:insert_coin", 1f, 1f);
                     }
 
                     if(owner) setOwnerCoins(current);
@@ -856,6 +857,8 @@ public class TileVendor extends TileTransactionMachine implements IInventory, Pl
             }
         }
 
+        worldObj.playSoundEffect(xCoord, yCoord, zCoord, "universalcoins:sold", 1f, 1f);
+
         validateFields();
         scheduleUpdate();
     }
@@ -1022,6 +1025,8 @@ public class TileVendor extends TileTransactionMachine implements IInventory, Pl
                 ownerCoins += price * quantity;
         }
 
+        worldObj.playSoundEffect(xCoord, yCoord, zCoord, "universalcoins:sold", 1f, 1f);
+
         validateFields();
         markDirty();
     }
@@ -1061,6 +1066,8 @@ public class TileVendor extends TileTransactionMachine implements IInventory, Pl
             else setInventorySlotContents(slot, new ItemStack(item));
 
             setCoins(balance, fromOwner);
+
+            worldObj.playSoundEffect(xCoord, yCoord, zCoord,"universalcoins:take_coin", 1.0F, 1.0F);
         }
         else
         {
@@ -1101,6 +1108,13 @@ public class TileVendor extends TileTransactionMachine implements IInventory, Pl
             try
             {
                 UniversalCoinsServer.cardDb.saveTransaction(transaction);
+
+                worldObj.playSoundEffect(xCoord, yCoord, zCoord,
+                         coinSource.getBalanceBefore()-coinSource.getBalanceAfter() > 1?
+                                "universalcoins:take_coins":
+                                "universalcoins:take_coin"
+                        , 1.0F, 1.0F);
+
             }
             catch (DataBaseException e)
             {
@@ -1201,21 +1215,6 @@ public class TileVendor extends TileTransactionMachine implements IInventory, Pl
         markDirty();
     }
 
-    public boolean isInUse(EntityPlayer player)
-    {
-        if(opener == null)
-            return false;
-
-        if(!opener.isEntityAlive() || !isUseableByPlayer(opener))
-        {
-            opener = null;
-            return false;
-        }
-
-        return !opener.isEntityEqual(player);
-
-    }
-
     public void onContainerClosed(EntityPlayer player)
     {
         if(player.isEntityEqual(opener))
@@ -1228,6 +1227,7 @@ public class TileVendor extends TileTransactionMachine implements IInventory, Pl
         return owner;
     }
 
+    @Override
     public void setOpener(EntityPlayer opener)
     {
         this.opener = opener;

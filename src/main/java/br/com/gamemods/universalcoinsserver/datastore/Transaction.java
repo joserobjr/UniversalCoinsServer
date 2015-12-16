@@ -1,6 +1,7 @@
 package br.com.gamemods.universalcoinsserver.datastore;
 
 import br.com.gamemods.universalcoinsserver.tile.TileSignal;
+import br.com.gamemods.universalcoinsserver.tile.TileSlots;
 import br.com.gamemods.universalcoinsserver.tile.TileVendor;
 import net.minecraft.item.ItemStack;
 
@@ -49,6 +50,20 @@ public final class Transaction
         this.ownerCoinSource = ownerSource;
         this.price = signal.fee;
         this.totalPrice = signal.fee;
+    }
+
+    public Transaction(TileSlots slots, Operation operation, Operator operator,
+                       CoinSource userSource, ItemStack product)
+    {
+        this.operation = operation;
+        this.machine = slots;
+        this.operation = operation;
+        this.quantity = 1;
+        this.userCoinSource = userSource;
+        this.price = slots.fee;
+        this.totalPrice = slots.fee;
+        this.product = product;
+        this.operator = operator;
     }
 
     public static abstract class CoinSource

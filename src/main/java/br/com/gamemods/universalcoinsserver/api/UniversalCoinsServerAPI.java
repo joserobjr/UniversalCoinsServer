@@ -361,7 +361,7 @@ public class UniversalCoinsServerAPI
         for(int i = length-1; i >= 0; i--)
         {
             ItemCoin coin = coinDegree[i];
-            if(coin.getValue() < coins)
+            if(coin.getValue() <= coins)
             {
                 lastItem = coin;
                 break;
