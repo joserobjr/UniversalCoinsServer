@@ -29,10 +29,6 @@ public interface CardDataBase
      */
     int depositToAccount(Object account, Collection<ItemStack> coins, Transaction transaction) throws DataBaseException;
 
-    /**
-     * @see #depositToAccount(Object, Collection, Transaction)
-     * @throws DataBaseException
-     */
     int depositToAccount(Object account, ItemStack coins, Transaction transaction) throws DataBaseException;
 
     int depositToAccount(Object account, int coins, Transaction transaction) throws DataBaseException, IllegalArgumentException;
@@ -55,4 +51,6 @@ public interface CardDataBase
     AccountAddress createCustomAccount(UUID playerUID, String customAccountName) throws DataBaseException;
 
     AccountAddress transferAccount(AccountAddress origin, String destiny, Machine machine, Operator operator) throws DataBaseException;
+
+    AccountAddress transferPrimaryAccount(AccountAddress primaryAccount, String newName, Machine machine, Operator operator) throws DataBaseException;
 }

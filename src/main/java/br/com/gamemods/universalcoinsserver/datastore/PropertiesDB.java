@@ -411,6 +411,17 @@ public class PropertiesDB implements CardDataBase
     @Override
     public AccountAddress transferAccount(AccountAddress origin, String destiny, Machine machine, Operator operator) throws DataBaseException
     {
+        return transferAccount(origin, destiny, machine, operator, false);
+    }
+
+    @Override
+    public AccountAddress transferPrimaryAccount(AccountAddress primaryAccount, String newName, Machine machine, Operator operator) throws DataBaseException
+    {
+        return transferAccount(primaryAccount, newName, machine, operator, true);
+    }
+
+    private AccountAddress transferAccount(AccountAddress origin, String destiny, Machine machine, Operator operator, boolean primary) throws DataBaseException
+    {
         Properties originAccount = loadAccount(origin.getNumber().toString());
         if(originAccount == null || originAccount.getProperty("removed","false").equals("true"))
             throw new AccountNotFoundException(origin.getNumber());
@@ -419,7 +430,7 @@ public class PropertiesDB implements CardDataBase
         int playerVersion = readVersion(playerData);
         int originVersion = readVersion(originAccount);
 
-        AccountAddress address = createCustomAccount(origin.getOwner(), destiny);
+        AccountAddress address = (primary)? createAccount(origin.getOwner(), destiny) : createCustomAccount(origin.getOwner(), destiny);
 
         Properties destinyAccount = loadAccount(address.getNumber().toString());
         destinyAccount.setProperty("balance", originAccount.getProperty("balance", "0"));
@@ -427,11 +438,16 @@ public class PropertiesDB implements CardDataBase
         originAccount.setProperty("removed", "true");
         originAccount.setProperty("transferred.number", address.getNumber().toString());
         originAccount.setProperty("transferred.name", address.getName());
-        String property = playerData.getProperty("alternative.accounts", "").replaceFirst("\\|?"+Pattern.quote(origin.getNumber()+";"+origin.getName()), "").replaceFirst("^\\|","");
-        if(property.isEmpty())
-            playerData.setProperty("alternative.accounts", address.getNumber()+";"+address.getName());
+        if(primary)
+            playerData.setProperty("account", address.getNumber()+";"+address.getName());
         else
-            playerData.setProperty("alternative.accounts", property+"|"+address.getNumber()+";"+address.getName());
+        {
+            String property = playerData.getProperty("alternative.accounts", "").replaceFirst("\\|?" + Pattern.quote(origin.getNumber() + ";" + origin.getName()), "").replaceFirst("^\\|", "");
+            if (property.isEmpty())
+                playerData.setProperty("alternative.accounts", address.getNumber() + ";" + address.getName());
+            else
+                playerData.setProperty("alternative.accounts", property + "|" + address.getNumber() + ";" + address.getName());
+        }
 
         incrementInt(playerData, "version", 2, Integer.MIN_VALUE);
         incrementInt(originAccount, "version", Integer.MIN_VALUE);
@@ -439,8 +455,8 @@ public class PropertiesDB implements CardDataBase
 
         try
         {
-            ItemStack oldCard = UniversalCoinsServerAPI.createCard(origin, true);
-            ItemStack newCard = UniversalCoinsServerAPI.createCard(address, true);
+            ItemStack oldCard = UniversalCoinsServerAPI.createCard(origin, !primary);
+            ItemStack newCard = UniversalCoinsServerAPI.createCard(address, !primary);
             int balance = readInt(destinyAccount, "balance", 0);
             Transaction transaction = new Transaction(machine, Transaction.Operation.TRANSFER_ACCOUNT, operator,
                     new Transaction.CardCoinSource(oldCard, origin, balance, 0),
@@ -465,7 +481,7 @@ public class PropertiesDB implements CardDataBase
                 playerData.store(writer, "Transferred "+origin.getNumber()+"("+origin.getName()+") to "+address.getNumber()+"("+address.getName()+")");
             }
 
-            try
+            if(!primary) try
             {
                 Properties properties = new SortedProperties();
                 File customAccount = getCustomAccountFile(origin.getName());

@@ -468,9 +468,37 @@ public class TileCardStation extends TileTransactionMachine
                         return;
                     }
 
+                    AccountAddress oldAccount = state.customAccount;
                     state.customAccount = UniversalCoinsServer.cardDb.transferAccount(state.customAccount, customAccountName, this, new PlayerOperator(opener));
+                    if(state.cardAccount == oldAccount)
+                        state.cardAccount = state.customAccount;
+
                     state.accountError = false;
                     exportCard(UniversalCoinsServerAPI.createCard(state.customAccount, true));
+                    return;
+                }
+                catch (DataBaseException e)
+                {
+                    e.printStackTrace();
+                    state.accountError = true;
+                    return;
+                }
+            case FUNCTION_TRANSFER_ACCOUNT:
+                try
+                {
+                    if(state.primaryAccount ==null)
+                    {
+                        state.accountError = true;
+                        return;
+                    }
+
+                    AccountAddress oldAccount = state.primaryAccount;
+                    state.primaryAccount = UniversalCoinsServer.cardDb.transferPrimaryAccount(state.primaryAccount, state.playerName, this, new PlayerOperator(opener));
+                    if(state.cardAccount == oldAccount)
+                        state.cardAccount = state.primaryAccount;
+
+                    state.accountError = false;
+                    exportCard(UniversalCoinsServerAPI.createCard(state.primaryAccount, false));
                     return;
                 }
                 catch (DataBaseException e)
