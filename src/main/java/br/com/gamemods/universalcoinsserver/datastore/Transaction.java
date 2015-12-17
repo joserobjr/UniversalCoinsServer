@@ -85,11 +85,12 @@ public final class Transaction
     }
 
     public Transaction(Machine machine, Operation operation, Operator operator,
-                       MachineCoinSource machineCoinSource, CardCoinSource cardCoinSource,
+                       CoinSource ownerCoinSource, CardCoinSource cardCoinSource,
                        ItemStack product)
     {
         if(operation != Operation.DEPOSIT_TO_ACCOUNT_FROM_MACHINE
-            && operation != Operation.WITHDRAW_FROM_ACCOUNT_TO_MACHINE)
+            && operation != Operation.WITHDRAW_FROM_ACCOUNT_TO_MACHINE
+            && operation != Operation.TRANSFER_ACCOUNT)
             throw new IllegalArgumentException();
 
         this.operator = operator;
@@ -97,7 +98,7 @@ public final class Transaction
         this.machine = machine;
         this.quantity = 1;
         this.userCoinSource = cardCoinSource;
-        this.ownerCoinSource = machineCoinSource;
+        this.ownerCoinSource = ownerCoinSource;
         this.price = cardCoinSource.getBalanceAfter() - cardCoinSource.getBalanceBefore();
         this.totalPrice = price;
         this.product = product;
@@ -115,6 +116,14 @@ public final class Transaction
         private AccountAddress accountAddress;
         private int balanceBefore;
         private int balanceAfter;
+
+        public CardCoinSource(ItemStack card, AccountAddress accountAddress, int balanceBefore, int balanceAfter)
+        {
+            this.card = card;
+            this.accountAddress = accountAddress;
+            this.balanceBefore = balanceBefore;
+            this.balanceAfter = balanceAfter;
+        }
 
         public CardCoinSource(AccountAddress accountAddress, int increment) throws DataBaseException
         {
@@ -265,7 +274,7 @@ public final class Transaction
         SELL_TO_MACHINE,
         DEPOSIT_TO_MACHINE,
         SLOTS_WIN_5_MATCH, SLOTS_WIN_4_MATCH, WITHDRAW_FROM_MACHINE,
-        WITHDRAW_FROM_ACCOUNT_TO_MACHINE, DEPOSIT_TO_ACCOUNT_FROM_MACHINE
+        WITHDRAW_FROM_ACCOUNT_TO_MACHINE, TRANSFER_ACCOUNT, DEPOSIT_TO_ACCOUNT_FROM_MACHINE
     }
 
     public UUID getId()

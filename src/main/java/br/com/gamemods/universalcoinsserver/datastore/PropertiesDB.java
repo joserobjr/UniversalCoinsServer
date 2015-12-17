@@ -409,7 +409,7 @@ public class PropertiesDB implements CardDataBase
     }
 
     @Override
-    public AccountAddress transferAccount(AccountAddress origin, String destiny) throws DataBaseException
+    public AccountAddress transferAccount(AccountAddress origin, String destiny, Machine machine, Operator operator) throws DataBaseException
     {
         Properties originAccount = loadAccount(origin.getNumber().toString());
         if(originAccount == null || originAccount.getProperty("removed","false").equals("true"))
@@ -439,6 +439,17 @@ public class PropertiesDB implements CardDataBase
 
         try
         {
+            ItemStack oldCard = UniversalCoinsServerAPI.createCard(origin, true);
+            ItemStack newCard = UniversalCoinsServerAPI.createCard(address, true);
+            int balance = readInt(destinyAccount, "balance", 0);
+            Transaction transaction = new Transaction(machine, Transaction.Operation.TRANSFER_ACCOUNT, operator,
+                    new Transaction.CardCoinSource(oldCard, origin, balance, 0),
+                    new Transaction.CardCoinSource(newCard, address, 0, balance),
+                    null);
+
+            saveTransaction(transaction);
+
+
             try (FileWriter writer = new FileWriter(getAccountFile(origin.getNumber().toString())))
             {
                 originAccount.store(writer, "Transferred to " + address.getNumber());

@@ -468,7 +468,7 @@ public class TileCardStation extends TileTransactionMachine
                         return;
                     }
 
-                    state.customAccount = UniversalCoinsServer.cardDb.transferAccount(state.customAccount, customAccountName);
+                    state.customAccount = UniversalCoinsServer.cardDb.transferAccount(state.customAccount, customAccountName, this, new PlayerOperator(opener));
                     state.accountError = false;
                     exportCard(UniversalCoinsServerAPI.createCard(state.customAccount, true));
                     return;
