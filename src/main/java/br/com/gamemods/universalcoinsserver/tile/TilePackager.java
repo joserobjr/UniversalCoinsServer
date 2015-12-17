@@ -204,7 +204,7 @@ public class TilePackager extends TileTransactionMachine
             }
         }
 
-        opener.addChatComponentMessage(new ChatComponentTranslation("player.is.not.online").setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED)));
+        opener.addChatComponentMessage(new ChatComponentTranslation("packager.player.is.not.online").setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED)));
     }
 
     public void playerLookup(String player, boolean tabPressed)

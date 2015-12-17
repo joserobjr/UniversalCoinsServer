@@ -2,6 +2,7 @@ package br.com.gamemods.universalcoinsserver.api;
 
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.datastore.AccountAddress;
+import br.com.gamemods.universalcoinsserver.datastore.DataBaseException;
 import br.com.gamemods.universalcoinsserver.item.ItemCard;
 import br.com.gamemods.universalcoinsserver.item.ItemCoin;
 import net.minecraft.entity.Entity;
@@ -455,6 +456,18 @@ public class UniversalCoinsServerAPI
         }
     }
 
+    public static boolean canCardBeUsedBy(ItemStack cardStack, EntityPlayer user)
+    {
+        if (cardStack == null || user == null) return false;
+        AccountAddress address = getAddress(cardStack);
+        return address != null && (address.getOwner().equals(user.getPersistentID()) || cardStack.stackTagCompound.getBoolean("Open"));
+    }
+
+    public static boolean isCardValid(ItemStack cardStack) throws DataBaseException
+    {
+        return cardStack.stackTagCompound != null && UniversalCoinsServer.cardDb.getAccountOwner(cardStack.stackTagCompound.getString("Account")) != null;
+    }
+
     public static ItemStack createCard(AccountAddress account, boolean open)
     {
         ItemStack stack = new ItemStack(UniversalCoinsServer.proxy.itemCard);
@@ -465,5 +478,26 @@ public class UniversalCoinsServerAPI
         if(open)
             stack.stackTagCompound.setBoolean("Open", true);
         return stack;
+    }
+
+    public static int getCardBalance(ItemStack card) throws DataBaseException
+    {
+        if(card == null || card.stackTagCompound == null || !(card.getItem() instanceof ItemCard))
+            return 0;
+
+        return UniversalCoinsServer.cardDb.getAccountBalance(card.stackTagCompound.getString("Account"));
+    }
+
+    public static int getCardBalanceSafely(ItemStack card)
+    {
+        try
+        {
+            return getCardBalance(card);
+        }
+        catch (DataBaseException e)
+        {
+            e.printStackTrace();
+            return 0;
+        }
     }
 }

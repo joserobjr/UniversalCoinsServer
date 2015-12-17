@@ -2,6 +2,7 @@ package br.com.gamemods.universalcoinsserver.tile;
 
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.api.UniversalCoinsServerAPI;
+import br.com.gamemods.universalcoinsserver.datastore.AccountAddress;
 import br.com.gamemods.universalcoinsserver.datastore.DataBaseException;
 import br.com.gamemods.universalcoinsserver.datastore.PlayerOperator;
 import br.com.gamemods.universalcoinsserver.datastore.Transaction;
@@ -42,6 +43,7 @@ public class TileSlots extends TileTransactionMachine
     private long coolDown;
     private Random random = new Random();
     private boolean waitingCheck = false;
+    private AccountAddress card;
 
     @Override
     public void onButtonPressed(EntityPlayerMP player, int buttonId, boolean shiftPressed)
@@ -155,41 +157,70 @@ public class TileSlots extends TileTransactionMachine
         markDirty();
     }
 
-    public void spin(boolean ignoreCoolDown)
+    public void fakeSpin()
     {
-        if(userCoins < fee || !ignoreCoolDown && System.currentTimeMillis() <= coolDown)
+        fakeReel = reelPos.clone();
+        LinkedList<Integer> available = null;
+        Map<Integer, Integer> count = new HashMap<>(reelPos.length);
+        for(int i=0; i< reelPos.length; i++)
         {
-            fakeReel = reelPos.clone();
-            LinkedList<Integer> available = null;
-            Map<Integer, Integer> count = new HashMap<>(reelPos.length);
-            for(int i=0; i< reelPos.length; i++)
+            int val = reelPos[i];
+            if(!count.containsKey(val))
+                count.put(val, 1);
+            else
             {
-                int val = reelPos[i];
-                if(!count.containsKey(val))
-                    count.put(val, 1);
-                else
+                int matches = count.get(val) + 1;
+                count.put(val, matches);
+                if(matches >= 4)
                 {
-                    int matches = count.get(val) + 1;
-                    count.put(val, matches);
-                    if(matches >= 4)
+                    if(fakeReel == null || available == null)
                     {
-                        if(fakeReel == null || available == null)
-                        {
-                            fakeReel = reelPos.clone();
-                            available = new LinkedList<>(Ints.asList(reelStops));
-                            Collections.shuffle(available);
-                        }
-
-                        available.remove(val);
-                        fakeReel[i] = available.remove();
+                        fakeReel = reelPos.clone();
+                        available = new LinkedList<>(Ints.asList(reelStops));
+                        Collections.shuffle(available);
                     }
+
+                    available.remove(val);
+                    fakeReel[i] = available.remove();
                 }
             }
-            scheduleUpdate();
+        }
+        scheduleUpdate();
+    }
+
+    public void spin(boolean ignoreCoolDown)
+    {
+        updateCard();
+        if((card == null && userCoins < fee) || !ignoreCoolDown && System.currentTimeMillis() <= coolDown)
+        {
+            fakeSpin();
             return;
         }
 
-        userCoins -= fee;
+        try
+        {
+            Transaction transaction = new Transaction(this, Transaction.Operation.BUY_FROM_MACHINE,
+                new PlayerOperator(opener),
+                card != null? new Transaction.CardCoinSource(card, -fee) :
+                        new Transaction.MachineCoinSource(this, userCoins+fee, -fee),
+                null);
+
+            if(card != null)
+                UniversalCoinsServer.cardDb.takeFromAccount(card, fee, transaction);
+            else
+                UniversalCoinsServer.cardDb.saveTransaction(transaction);
+        }
+        catch (Exception e)
+        {
+            UniversalCoinsServer.logger.error(e);
+            e.printStackTrace();
+            fakeSpin();
+            return;
+        }
+
+        if(card == null)
+            userCoins -= fee;
+
         coolDown = System.currentTimeMillis() + 1500L;
 
         fakeReel = null;
@@ -200,20 +231,6 @@ public class TileSlots extends TileTransactionMachine
         }
         waitingCheck = true;
         markDirty();
-
-        Transaction transaction = new Transaction(this, Transaction.Operation.BUY_FROM_MACHINE,
-                new PlayerOperator(opener),
-                new Transaction.MachineCoinSource(this, userCoins+fee, -fee),
-                null);
-
-        try
-        {
-            UniversalCoinsServer.cardDb.saveTransaction(transaction);
-        }
-        catch (Exception e)
-        {
-            UniversalCoinsServer.logger.error(e);
-        }
     }
 
     @Override
@@ -222,6 +239,7 @@ public class TileSlots extends TileTransactionMachine
         super.setOpener(opener);
         if(opener == null)
             fakeReel = null;
+        updateCard();
     }
 
     @Override
@@ -244,7 +262,7 @@ public class TileSlots extends TileTransactionMachine
         tagCompound.setInteger("spinFee", fee);
         tagCompound.setInteger("fourMatchPayout", fourMatchPayout);
         tagCompound.setInteger("fiveMatchPayout", fiveMatchPayout);
-        tagCompound.setBoolean("cardAvailable", false);
+        tagCompound.setBoolean("cardAvailable", card != null);
         tagCompound.setString("customName", "");
         tagCompound.setBoolean("inUse", opener != null);
         for(int i = 0; i < reelPos.length; i++)
@@ -275,6 +293,8 @@ public class TileSlots extends TileTransactionMachine
         fiveMatchPayout = tagCompound.getInteger("fiveMatchPayout");
         for(int i= 0; i < reelPos.length; i++)
             reelPos[i] = tagCompound.getInteger("reelPos"+i);
+
+        updateCard();
     }
 
     @Override
@@ -322,6 +342,10 @@ public class TileSlots extends TileTransactionMachine
                     inventory[slot] = null;
             }
         }
+
+        if(slot == SLOT_CARD)
+            updateCard();
+
         return stack;
     }
 
@@ -378,7 +402,22 @@ public class TileSlots extends TileTransactionMachine
                 }
                 break;
             }
+            case SLOT_CARD:
+                updateCard();
         }
+    }
+
+    public void updateCard()
+    {
+        ItemStack stack = inventory[SLOT_CARD];
+        Object before = card;
+        if(UniversalCoinsServerAPI.canCardBeUsedBy(stack, opener) && UniversalCoinsServerAPI.getCardBalanceSafely(stack) >= fee)
+            card = UniversalCoinsServerAPI.getAddress(stack);
+        else
+            card = null;
+
+        if(!Objects.equals(before, card))
+            scheduleUpdate();
     }
 
     @Override

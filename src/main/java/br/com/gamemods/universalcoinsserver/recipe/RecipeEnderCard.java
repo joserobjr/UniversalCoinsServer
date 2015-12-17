@@ -12,8 +12,11 @@ public class RecipeEnderCard implements IRecipe
 {
 
     private ItemStack newStack;
-    private Item[] recipeItems = {null, Items.ender_pearl, null, Items.ender_pearl, UniversalCoinsServer.proxy.itemCard,
-            Items.ender_pearl, null, Items.ender_pearl, null};
+    private Item[] recipeItems = {
+            null, Items.ender_pearl, null,
+            Items.ender_pearl, UniversalCoinsServer.proxy.itemCard, Items.ender_pearl,
+            null, Items.ender_pearl, null
+    };
 
     @Override
     public boolean matches(InventoryCrafting var1, World var2)
