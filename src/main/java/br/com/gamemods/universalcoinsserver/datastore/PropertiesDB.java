@@ -111,7 +111,11 @@ public class PropertiesDB implements CardDataBase
             else
             {
                 String[] split = number.split(";", 2);
-                primary = new AccountAddress(split[0], split[1], playerUID);
+                Properties accountProperties = loadAccount(split[0]);
+                if(accountProperties == null || accountProperties.getProperty("removed", "false").equals("true"))
+                    primary = null;
+                else
+                    primary = new AccountAddress(split[0], split[1], playerUID);
             }
 
             number = properties.getProperty("alternative.accounts");
@@ -124,6 +128,10 @@ public class PropertiesDB implements CardDataBase
                 for(String str: accountSplit)
                 {
                     String[] split = str.split(";",2);
+                    Properties accountProperties = loadAccount(split[0]);
+                    if(accountProperties == null || accountProperties.getProperty("removed", "false").equals("true"))
+                        continue;
+
                     alternativeAccounts.add(new AccountAddress(split[0], split[1], playerUID));
                 }
             }
@@ -153,7 +161,31 @@ public class PropertiesDB implements CardDataBase
         try
         {
             int version = Integer.parseInt(playerData.getProperty("version", Integer.toString(Integer.MIN_VALUE)));
+            AccountAddress account = createAccount(playerUID, name);
 
+            playerData.setProperty("version", Integer.toString(version + 1));
+            playerData.setProperty("account", account.getNumber() + ";" + account.getName());
+            try (FileWriter writer = new FileWriter(new File(players, playerUID + ".properties")))
+            {
+                playerData.store(writer, "Primary account created");
+            }
+
+            return account;
+        }
+        catch (DataBaseException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            throw new DataBaseException(e);
+        }
+    }
+
+    private AccountAddress createAccount(UUID playerUID, String name) throws DataBaseException
+    {
+        try
+        {
             String number;
             File file;
             do
@@ -171,13 +203,6 @@ public class PropertiesDB implements CardDataBase
             try(FileWriter writer = new FileWriter(file))
             {
                 properties.store(writer, "Recently created");
-            }
-
-            playerData.setProperty("version", Integer.toString(version+1));
-            playerData.setProperty("account", number+";"+name);
-            try(FileWriter writer = new FileWriter(new File(players, playerUID+".properties")))
-            {
-                playerData.store(writer, "Primary account created");
             }
 
             return new AccountAddress(number, name, playerUID);
@@ -281,6 +306,103 @@ public class PropertiesDB implements CardDataBase
     private File getAccountFile(String account)
     {
         return new File(accounts, account+".properties");
+    }
+
+    private File getCustomAccountFile(String customAccountName) throws IOException
+    {
+        return new File(createDir(accounts, "custom"), customAccountName.toLowerCase()+".properties");
+    }
+
+    private File getPlayerFile(UUID playerUID)
+    {
+        return new File(players, playerUID + ".properties");
+    }
+
+    @Override
+    public AccountAddress getCustomAccountByName(String customAccountName) throws DataBaseException
+    {
+        try
+        {
+            File file = getCustomAccountFile(customAccountName);
+            if(!file.exists())
+                return null;
+
+            Properties properties = new Properties();
+            try(FileReader reader = new FileReader(file))
+            {
+                properties.load(reader);
+            }
+
+            if(properties.getProperty("removed", "false").equals("true"))
+                return null;
+
+            return new AccountAddress(properties.getProperty("number"), properties.getProperty("name"),
+                    UUID.fromString(properties.getProperty("owner")));
+        }
+        catch (Exception e)
+        {
+            throw new DataBaseException(e);
+        }
+    }
+
+    private int readInt(Properties properties, String key, int defaultValue)
+    {
+        return Integer.parseInt(properties.getProperty(key, Integer.toString(defaultValue)));
+    }
+
+    private int readVersion(Properties properties)
+    {
+        return readInt(properties, "version", Integer.MIN_VALUE);
+    }
+
+    @Override
+    public AccountAddress createCustomAccount(UUID playerUID, String customAccountName) throws DataBaseException
+    {
+        Properties playerProperties = loadPlayer(playerUID);
+        try
+        {
+            int version = readVersion(playerProperties);
+
+            File file = getCustomAccountFile(customAccountName);
+            if(file.exists() && getCustomAccountByName(customAccountName) != null)
+                throw new DataBaseException("Account " + customAccountName + " already exists");
+
+            AccountAddress account = createAccount(playerUID, customAccountName);
+            String property = playerProperties.getProperty("alternative.accounts", "");
+            String append = account.getNumber()+";"+account.getName();
+            if(property.isEmpty())
+                property = append;
+            else
+                property += "|"+append;
+            version++;
+            playerProperties.setProperty("alternative.accounts", property);
+            playerProperties.setProperty("version", Integer.toString(version));
+
+            Properties custom = new SortedProperties();
+            custom.setProperty("number", account.getNumber().toString());
+            custom.setProperty("name", account.getName());
+            custom.setProperty("owner",account.getOwner().toString());
+            custom.setProperty("version",Integer.toString(Integer.MIN_VALUE));
+            try(FileWriter writer = new FileWriter(file))
+            {
+                custom.store(writer, "Account created");
+            }
+
+            try(FileWriter writer = new FileWriter(getPlayerFile(playerUID)))
+            {
+                playerProperties.store(writer, "Custom account '"+customAccountName+"' created");
+            }
+
+            return account;
+        }
+        catch (DataBaseException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            throw new DataBaseException(e);
+        }
     }
 
     @Override

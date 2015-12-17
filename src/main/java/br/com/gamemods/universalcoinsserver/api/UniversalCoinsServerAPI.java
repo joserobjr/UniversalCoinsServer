@@ -454,4 +454,16 @@ public class UniversalCoinsServerAPI
             }
         }
     }
+
+    public static ItemStack createCard(AccountAddress account, boolean open)
+    {
+        ItemStack stack = new ItemStack(UniversalCoinsServer.proxy.itemCard);
+        stack.stackTagCompound = new NBTTagCompound();
+        stack.stackTagCompound.setString("Name", account.getName());
+        stack.stackTagCompound.setString("Owner", account.getOwner().toString());
+        stack.stackTagCompound.setString("Account", account.getNumber().toString());
+        if(open)
+            stack.stackTagCompound.setBoolean("Open", true);
+        return stack;
+    }
 }

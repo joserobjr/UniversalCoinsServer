@@ -41,9 +41,11 @@ public class UniversalCoinsServer
         network = NetworkRegistry.INSTANCE.newSimpleChannel("universalcoins");
         network.registerMessage(ButtonMessage.class, ButtonMessage.class, 0, Side.SERVER);
         network.registerMessage(VendorServerMessage.class, VendorServerMessage.class, 1, Side.SERVER);
+        network.registerMessage(TileCardStationMessage.class, TileCardStationMessage.class, 3, Side.CLIENT);
         network.registerMessage(CardStationServerWithdrawalMessage.class, CardStationServerWithdrawalMessage.class, 4,
                 Side.SERVER);
-        network.registerMessage(TileCardStationMessage.class, TileCardStationMessage.class, 3, Side.CLIENT);
+        network.registerMessage(CardStationServerCustomNameMessage.class, CardStationServerCustomNameMessage.class, 5,
+                Side.SERVER);
         network.registerMessage(TextureMessage.class, TextureMessage.class, 7, Side.SERVER);
         network.registerMessage(SignMessage.class, SignMessage.class, 8, Side.CLIENT);
         network.registerMessage(SignServerMessage.class, SignServerMessage.class, 9, Side.SERVER);

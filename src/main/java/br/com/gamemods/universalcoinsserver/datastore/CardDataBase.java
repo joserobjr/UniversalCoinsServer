@@ -49,4 +49,8 @@ public interface CardDataBase
 
     @SuppressWarnings("DuplicateThrows")
     int takeFromAccount(Object account, int amount, Transaction transaction) throws DataBaseException, OutOfCoinsException;
+
+    AccountAddress getCustomAccountByName(String customAccountName) throws DataBaseException;
+
+    AccountAddress createCustomAccount(UUID playerUID, String customAccountName) throws DataBaseException;
 }
