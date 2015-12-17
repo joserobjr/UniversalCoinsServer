@@ -285,6 +285,7 @@ public class PropertiesDB implements CardDataBase
     @Override
     public int getAccountBalance(Object account) throws DataBaseException
     {
+        if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
         Properties properties = loadAccount(account.toString());
         if(properties == null)
             return -1;
@@ -313,6 +314,7 @@ public class PropertiesDB implements CardDataBase
     @Override
     public int canDeposit(Object account, int coins) throws DataBaseException
     {
+        if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
         Properties properties = loadAccount(account.toString());
 
         try
@@ -567,6 +569,7 @@ public class PropertiesDB implements CardDataBase
     public int takeFromAccount(Object account, int amount, Transaction transaction)
             throws DataBaseException
     {
+        if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
         Properties properties = loadAccount(account.toString());
         try
         {
@@ -609,6 +612,7 @@ public class PropertiesDB implements CardDataBase
     @Override
     public int depositToAccount(Object account, Collection<ItemStack> coinsStacks, Transaction transaction) throws DataBaseException
     {
+        if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
         int value = UniversalCoinsServerAPI.stackValue(coinsStacks);
         if(value == 0)
             return 0;
@@ -657,6 +661,7 @@ public class PropertiesDB implements CardDataBase
     @Override
     public int depositToAccount(Object account, int value, Transaction transaction) throws DataBaseException
     {
+        if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
         Properties properties = loadAccount(account.toString());
         return deposit(properties, account.toString(), value, transaction);
     }
