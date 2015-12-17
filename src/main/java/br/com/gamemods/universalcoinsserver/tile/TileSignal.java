@@ -198,7 +198,7 @@ public class TileSignal extends TileOwned
                         UniversalCoinsServer.cardDb.saveTransaction(transaction);
 
                         worldObj.playSoundEffect(xCoord, yCoord, zCoord,
-                                coins-before > 1?
+                                before-coins > 1?
                                         "universalcoins:take_coins":
                                         "universalcoins:take_coin"
                                 , 1.0F, 1.0F);

@@ -76,6 +76,7 @@ public class BlockPackager extends BlockRotary
             }
 
             drops.addAll(UniversalCoinsServerAPI.createStacks(packager.userCoins));
+            packager.userCoins = 0;
 
             drop(world, x, y, z, drops);
         }

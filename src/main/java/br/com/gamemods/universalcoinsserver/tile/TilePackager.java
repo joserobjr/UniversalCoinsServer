@@ -108,6 +108,12 @@ public class TilePackager extends TileTransactionMachine
                 {
                     outputUnlocked = true;
                     userCoins = UniversalCoinsServerAPI.addCoinsToSlot(this, userCoins, SLOT_OUTPUT);
+
+                    worldObj.playSoundEffect(xCoord, yCoord, zCoord,
+                            before-userCoins > 1?
+                                    "universalcoins:take_coins":
+                                    "universalcoins:take_coin"
+                            , 1.0F, 1.0F);
                 }
                 finally
                 {
