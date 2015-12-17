@@ -96,4 +96,10 @@ public abstract class TileTransactionMachine extends TileEntity implements Machi
 
     public void onButtonPressed(EntityPlayerMP player, int buttonId, boolean shiftPressed)
     {}
+
+    public void onContainerClosed(EntityPlayer player)
+    {
+        if(player.isEntityEqual(opener))
+            opener = null;
+    }
 }

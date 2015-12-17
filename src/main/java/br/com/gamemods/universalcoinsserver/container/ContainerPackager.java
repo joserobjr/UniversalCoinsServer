@@ -1,23 +1,28 @@
 package br.com.gamemods.universalcoinsserver.container;
 
-import br.com.gamemods.universalcoinsserver.tile.TileSlots;
+import br.com.gamemods.universalcoinsserver.tile.TilePackager;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 
-public class ContainerSlots extends Container
+public class ContainerPackager extends Container
 {
-    private TileSlots tileSlots;
+    private TilePackager packager;
 
-    public ContainerSlots(InventoryPlayer inventoryPlayer, TileSlots tileSlots)
+    public ContainerPackager(InventoryPlayer inventoryPlayer, TilePackager tilePackager)
     {
-        this.tileSlots = tileSlots;
+        this.packager = tilePackager;
 
-        addSlotToContainer(new SlotCard(tileSlots, TileSlots.SLOT_CARD, 13, 73));
-        addSlotToContainer(new SlotCoinInput(tileSlots, TileSlots.SLOT_COIN_INPUT, 31, 73));
-        addSlotToContainer(new SlotOutput(tileSlots, TileSlots.SLOT_COIN_OUTPUT, 148, 73));
+        for (int i = 0; i < 4; i++)
+            for (int j = 0; j < 2; j++)
+                addSlotToContainer(new Slot(tilePackager, i * 2 + j, 8 + i * 18, 22 + j * 18));
+
+        addSlotToContainer(new SlotCard(tilePackager, TilePackager.SLOT_CARD, 8, 73));
+        addSlotToContainer(new SlotCoinInput(tilePackager, TilePackager.SLOT_COIN_INPUT, 26, 73));
+        addSlotToContainer(new SlotOutput(tilePackager, TilePackager.SLOT_OUTPUT, 152, 73));
+        addSlotToContainer(new SlotPackage(tilePackager, TilePackager.SLOT_PACKAGE_INPUT, Integer.MAX_VALUE, 26));
 
         for (int i = 0; i < 3; i++)
             for (int j = 0; j < 9; j++)
@@ -30,14 +35,7 @@ public class ContainerSlots extends Container
     @Override
     public boolean canInteractWith(EntityPlayer player)
     {
-        return tileSlots.isUseableByPlayer(player);
-    }
-
-    @Override
-    public void onContainerClosed(EntityPlayer player)
-    {
-        super.onContainerClosed(player);
-        tileSlots.onContainerClosed(player);
+        return packager.isUseableByPlayer(player);
     }
 
     @Override
@@ -52,9 +50,9 @@ public class ContainerSlots extends Container
             stack = stackInSlot.copy();
 
             // merges the item into player inventory since its in the tileEntity
-            if (slot < 3)
+            if (slot < 11)
             {
-                if (!this.mergeItemStack(stackInSlot, 3, 39, true))
+                if (!this.mergeItemStack(stackInSlot, 11, 47, true))
                 {
                     return null;
                 }
@@ -64,7 +62,7 @@ public class ContainerSlots extends Container
             else
             {
                 boolean foundSlot = false;
-                for (int i = 0; i < 3; i++)
+                for (int i = 4 - packager.packageSize * 2; i < 11; i++)
                 {
                     if (((Slot) inventorySlots.get(i)).isItemValid(stackInSlot)
                             && this.mergeItemStack(stackInSlot, i, i + 1, false))
@@ -95,5 +93,12 @@ public class ContainerSlots extends Container
         }
 
         return stack;
+    }
+
+    @Override
+    public void onContainerClosed(EntityPlayer player)
+    {
+        super.onContainerClosed(player);
+        packager.onContainerClosed(player);
     }
 }

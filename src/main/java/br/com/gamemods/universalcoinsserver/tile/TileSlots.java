@@ -56,7 +56,7 @@ public class TileSlots extends TileTransactionMachine
                 {
                     unlockInventory = true;
                     int before = userCoins;
-                    userCoins = UniversalCoinsServerAPI.addCoinsAnywhere(this, userCoins, SLOT_COIN_OUTPUT, SLOT_COIN_OUTPUT + 1);
+                    userCoins = UniversalCoinsServerAPI.addCoinsToSlot(this, userCoins, SLOT_COIN_OUTPUT);
                     if(before != userCoins)
                         worldObj.playSoundEffect(xCoord, yCoord, zCoord,
                                 inventory[SLOT_COIN_OUTPUT].stackSize > 1?

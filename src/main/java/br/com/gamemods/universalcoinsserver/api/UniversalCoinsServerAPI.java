@@ -3,11 +3,14 @@ package br.com.gamemods.universalcoinsserver.api;
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.item.ItemCoin;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.inventory.InventoryEnderChest;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.world.World;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -15,6 +18,8 @@ import java.util.*;
 
 public class UniversalCoinsServerAPI
 {
+    public static final Random random = new Random();
+
     @Nonnull
     public static ScanResult scanCoins(@Nonnull IInventory inventory)
             throws NullPointerException
@@ -187,6 +192,11 @@ public class UniversalCoinsServerAPI
             throws NullPointerException, IllegalArgumentException
     {
         return addCoinsAnywhere(inventory, coins, 0, inventory.getSizeInventory());
+    }
+
+    public static int addCoinsToSlot(@Nonnull IInventory inventory, int coins, int slot)
+    {
+        return addCoinsAnywhere(inventory, coins, slot, slot+1);
     }
 
     public static int addCoinsAnywhere(@Nonnull IInventory inventory, int coins, int startIndex, int endIndex)
@@ -376,5 +386,48 @@ public class UniversalCoinsServerAPI
         if(stack.stackSize > stack.getMaxStackSize())
             stack.stackSize = stack.getMaxStackSize();
         return stack;
+    }
+
+    public static boolean matches(ItemStack stack, ItemStack otherStack)
+    {
+        return !(stack == null || otherStack == null)
+                && stack.stackSize > 0 && otherStack.stackSize > 0
+                && stack.getItem() == otherStack.getItem() && stack.getItemDamage() == otherStack.getItemDamage()
+                && ItemStack.areItemStackTagsEqual(stack, otherStack);
+    }
+
+    public static void drop(World world, double x, double y, double z, List<ItemStack> drops)
+    {
+        drop(world, x, y, z, drops, random);
+    }
+
+    public static void drop(World world, double x, double y, double z, List<ItemStack> drops, Random random)
+    {
+        for(ItemStack drop: drops)
+        {
+            if(drop == null) continue;
+
+            float xRand = random.nextFloat() * 0.8F + 0.1F;
+            float yRand = random.nextFloat() * 0.8F + 0.1F;
+            float zRand = random.nextFloat() * 0.8F + 0.1F;
+
+            EntityItem item;
+            for (; drop.stackSize > 0; world.spawnEntityInWorld(item))
+            {
+                int amount = random.nextInt(21) + 10;
+
+                if (amount > drop.stackSize)
+                    amount = drop.stackSize;
+                drop.stackSize -= amount;
+
+                item = new EntityItem(world, x + xRand, y + yRand, z + zRand, new ItemStack(drop.getItem(), amount, drop.getItemDamage()));
+                item.motionX = (float)random.nextGaussian() * 0.05F;
+                item.motionY = (float)random.nextGaussian() * 0.05F + 0.2F;
+                item.motionZ = (float)random.nextGaussian() * 0.05F;
+
+                if (drop.hasTagCompound())
+                    item.getEntityItem().setTagCompound((NBTTagCompound)drop.getTagCompound().copy());
+            }
+        }
     }
 }

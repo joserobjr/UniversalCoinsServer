@@ -81,7 +81,7 @@ public class BlockSignal extends BlockOwned
 
         int metadata = world.getBlockMetadata(x,y,z);
 
-        Item item = getItemDropped(metadata, random, fortune);
+        Item item = getItemDropped(metadata, UniversalCoinsServerAPI.random, fortune);
         if (item != null)
         {
             ItemStack stack = new ItemStack(item, 1, damageDropped(metadata));

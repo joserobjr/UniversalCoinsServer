@@ -184,7 +184,7 @@ public class TileSignal extends TileOwned
                 {
                     unlockOutputSlot = true;
                     int before = coins;
-                    coins = UniversalCoinsServerAPI.addCoinsAnywhere(this, coins);
+                    coins = UniversalCoinsServerAPI.addCoinsToSlot(this, coins, SLOT_COIN_OUTPUT);
                     if(before == coins)
                         return;
 

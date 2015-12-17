@@ -1,6 +1,7 @@
 package br.com.gamemods.universalcoinsserver.tile;
 
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
+import br.com.gamemods.universalcoinsserver.api.UniversalCoinsServerAPI;
 import br.com.gamemods.universalcoinsserver.datastore.*;
 import br.com.gamemods.universalcoinsserver.item.ItemCoin;
 import net.minecraft.enchantment.Enchantment;
@@ -226,7 +227,8 @@ public class TileVendor extends TileOwned
     }
 
     @Override
-    public void onDataPacket(NetworkManager net, S35PacketUpdateTileEntity pkt) {
+    public void onDataPacket(NetworkManager net, S35PacketUpdateTileEntity pkt)
+    {
         readFromNBT(pkt.func_148857_g());
     }
 
@@ -725,14 +727,6 @@ public class TileVendor extends TileOwned
             withdraw(buttonId - BUTTON_USER_COIN, SLOT_COIN_OUTPUT, shiftPressed, false);
     }
 
-    public static boolean matches(ItemStack stack, ItemStack otherStack)
-    {
-        return !(stack == null || otherStack == null)
-                && stack.stackSize > 0 && otherStack.stackSize > 0
-                && stack.getItem() == otherStack.getItem() && stack.getItemDamage() == otherStack.getItemDamage()
-                && ItemStack.areItemStackTagsEqual(stack, otherStack);
-    }
-
     public void sell(boolean all)
     {
         Transaction.Operation operation = Transaction.Operation.SELL_TO_MACHINE;
@@ -741,7 +735,7 @@ public class TileVendor extends TileOwned
 
         ItemStack trade = inventory[SLOT_TRADE];
         ItemStack input = inventory[SLOT_SELL];
-        if(!matches(trade, input)
+        if(!UniversalCoinsServerAPI.matches(trade, input)
             || input.stackSize < trade.stackSize
             || (!infinite && (ownerCoins < price || outOfInventorySpace)))
         {
@@ -763,7 +757,7 @@ public class TileVendor extends TileOwned
                     storageSpace += maxStackSize;
                     spaces.add(i);
                 }
-                else if(matches(stack, trade) && stack.stackSize < maxStackSize)
+                else if(UniversalCoinsServerAPI.matches(stack, trade) && stack.stackSize < maxStackSize)
                 {
                     storageSpace += maxStackSize - stack.stackSize;
                     spaces.add(i);
@@ -925,7 +919,7 @@ public class TileVendor extends TileOwned
         ItemStack output = inventory[SLOT_OUTPUT];
         if(output != null)
         {
-            if (matches(output, trade) || output.stackSize + trade.stackSize > output.getMaxStackSize())
+            if (UniversalCoinsServerAPI.matches(output, trade) || output.stackSize + trade.stackSize > output.getMaxStackSize())
             {
                 buyButtonActive = false;
                 markDirty();
@@ -940,7 +934,7 @@ public class TileVendor extends TileOwned
             for(int i = SLOT_STORAGE_FIST; i <= SLOT_STORAGE_LAST; i++)
             {
                 ItemStack stack = inventory[i];
-                if(matches(stack, trade))
+                if(UniversalCoinsServerAPI.matches(stack, trade))
                 {
                     subtraction.add(stack);
                     found += stack.stackSize;
@@ -1190,7 +1184,7 @@ public class TileVendor extends TileOwned
                 {
                     foundSpace += trade.getMaxStackSize();
                 }
-                else if(matches(stack, trade))
+                else if(UniversalCoinsServerAPI.matches(stack, trade))
                 {
                     int maxStackSize = stack.getMaxStackSize();
                     if(stack.stackSize < maxStackSize)
@@ -1212,14 +1206,14 @@ public class TileVendor extends TileOwned
         }
 
         ItemStack sellStack = inventory[SLOT_SELL];
-        sellButtonActive = !sellToUser && !outOfInventorySpace && !outOfCoins && matches(trade, sellStack)
+        sellButtonActive = !sellToUser && !outOfInventorySpace && !outOfCoins && UniversalCoinsServerAPI.matches(trade, sellStack)
                 && sellStack.stackSize >= trade.stackSize && ((long)userCoins)+price <= Integer.MAX_VALUE;
         buyButtonActive = sellToUser && !outOfStock && userCoins >= price && ((long)ownerCoins)+price <= Integer.MAX_VALUE;
 
         if(buyButtonActive)
         {
             ItemStack output = inventory[SLOT_OUTPUT];
-            if(output != null && (!matches(output, trade) || output.stackSize+trade.stackSize > output.getMaxStackSize()))
+            if(output != null && (!UniversalCoinsServerAPI.matches(output, trade) || output.stackSize+trade.stackSize > output.getMaxStackSize()))
             {
                 buyButtonActive = false;
             }
@@ -1244,12 +1238,6 @@ public class TileVendor extends TileOwned
     {
         sellToUser = !sellToUser;
         markDirty();
-    }
-
-    public void onContainerClosed(EntityPlayer player)
-    {
-        if(player.isEntityEqual(opener))
-            opener = null;
     }
 
     @Override

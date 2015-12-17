@@ -1,6 +1,7 @@
 package br.com.gamemods.universalcoinsserver;
 
 import br.com.gamemods.universalcoinsserver.container.*;
+import br.com.gamemods.universalcoinsserver.tile.TilePackager;
 import br.com.gamemods.universalcoinsserver.tile.TileSignal;
 import br.com.gamemods.universalcoinsserver.tile.TileSlots;
 import br.com.gamemods.universalcoinsserver.tile.TileVendor;
@@ -54,6 +55,10 @@ public class GuiHandler implements IGuiHandler
             case GUI_SIGNAL:
                 if(te instanceof TileSignal)
                     return new ContainerSignal(player.inventory, (TileSignal)te);
+                else return null;
+            case GUI_PACKAGER:
+                if(te instanceof TilePackager)
+                    return new ContainerPackager(player.inventory, (TilePackager)te);
                 else return null;
             case GUI_TRADE_STATION:
             case GUI_ADV_SIGN:

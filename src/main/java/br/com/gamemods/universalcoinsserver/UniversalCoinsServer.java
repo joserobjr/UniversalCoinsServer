@@ -44,6 +44,7 @@ public class UniversalCoinsServer
         network.registerMessage(TextureMessage.class, TextureMessage.class, 7, Side.SERVER);
         network.registerMessage(SignMessage.class, SignMessage.class, 8, Side.CLIENT);
         network.registerMessage(SignServerMessage.class, SignServerMessage.class, 9, Side.SERVER);
+        network.registerMessage(PackagerServerMessage.class, PackagerServerMessage.class, 11, Side.SERVER);
 
         cardDb = new PropertiesDB(new File(event.getModConfigurationDirectory(), "database"));
     }
