@@ -15,6 +15,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.regex.Pattern;
 
 public class PropertiesDB implements CardDataBase
 {
@@ -199,7 +200,7 @@ public class PropertiesDB implements CardDataBase
     private String generateAccountNumber()
     {
         String str = Long.toString((long) (Math.floor(Math.random() * 99999999999L) + 11111111111L));
-        return str.substring(0,3)+"."+str.substring(3,6)+"."+str.substring(6,9)+"-"+str.substring(9);
+        return str.substring(0,3)+"."+str.substring(3,6)+"."+str.substring(6,9)+"-"+str.substring(9,11);
     }
 
     @Nonnull
@@ -426,7 +427,7 @@ public class PropertiesDB implements CardDataBase
         originAccount.setProperty("removed", "true");
         originAccount.setProperty("transferred.number", address.getNumber().toString());
         originAccount.setProperty("transferred.name", address.getName());
-        String property = playerData.getProperty("alternative.accounts", "");
+        String property = playerData.getProperty("alternative.accounts", "").replaceFirst("\\|?"+Pattern.quote(origin.getNumber()+";"+origin.getName()), "").replaceFirst("^\\|","");
         if(property.isEmpty())
             playerData.setProperty("alternative.accounts", address.getNumber()+";"+address.getName());
         else
@@ -463,7 +464,8 @@ public class PropertiesDB implements CardDataBase
                 }
 
                 properties.setProperty("removed", "true");
-                properties.setProperty("transferred", address.getNumber().toString());
+                properties.setProperty("transferred.number", address.getNumber().toString());
+                properties.setProperty("transferred.name", address.getName());
                 incrementInt(properties, "version", Integer.MIN_VALUE);
 
                 try(FileWriter writer = new FileWriter(customAccount))
