@@ -2,6 +2,7 @@ package br.com.gamemods.universalcoinsserver.blocks;
 
 import br.com.gamemods.universalcoinsserver.GuiHandler;
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
+import br.com.gamemods.universalcoinsserver.api.UniversalCoinsServerAPI;
 import br.com.gamemods.universalcoinsserver.tile.TilePackager;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.MapColor;
@@ -63,7 +64,7 @@ public class BlockPackager extends BlockRotary
         {
             TilePackager packager = (TilePackager) te;
             int size = packager.getSizeInventory();
-            ArrayList<ItemStack> drops = new ArrayList<>(size);
+            ArrayList<ItemStack> drops = new ArrayList<>(size+2);
             for(int i = 0; i < size; i++)
             {
                 ItemStack stack = packager.getStackInSlot(i);
@@ -73,6 +74,8 @@ public class BlockPackager extends BlockRotary
                     packager.setInventorySlotContents(i, null);
                 }
             }
+
+            drops.addAll(UniversalCoinsServerAPI.createStacks(packager.userCoins));
 
             drop(world, x, y, z, drops);
         }
