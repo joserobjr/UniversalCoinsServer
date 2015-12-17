@@ -554,6 +554,13 @@ public class TileCardStation extends TileTransactionMachine
             case FUNCTION_NEW_CARD:
                 try
                 {
+                    if(state.primaryAccount == null)
+                    {
+                        state.setPlayerData(UniversalCoinsServer.cardDb.getPlayerData(state.playerUID));
+                        if(state.cardAccount == null)
+                            state.cardAccount = state.primaryAccount;
+                    }
+
                     if(state.cardAccount == null)
                     {
                         state.primaryAccount = UniversalCoinsServer.cardDb.createPrimaryAccount(state.playerUID, state.playerName);
@@ -563,7 +570,7 @@ public class TileCardStation extends TileTransactionMachine
                     markDirty();
                     state.accountBalance = 0;
                 }
-                catch (DataBaseException e)
+                catch (DataBaseException|NullPointerException e)
                 {
                     e.printStackTrace();
                     state.accountError = true;
