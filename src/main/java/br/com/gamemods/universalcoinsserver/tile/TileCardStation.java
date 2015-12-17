@@ -2,10 +2,7 @@ package br.com.gamemods.universalcoinsserver.tile;
 
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.api.UniversalCoinsServerAPI;
-import br.com.gamemods.universalcoinsserver.datastore.AccountAddress;
-import br.com.gamemods.universalcoinsserver.datastore.DataBaseException;
-import br.com.gamemods.universalcoinsserver.datastore.PlayerOperator;
-import br.com.gamemods.universalcoinsserver.datastore.Transaction;
+import br.com.gamemods.universalcoinsserver.datastore.*;
 import br.com.gamemods.universalcoinsserver.item.ItemCoin;
 import br.com.gamemods.universalcoinsserver.net.TileCardStationMessage;
 import com.google.common.primitives.Ints;
@@ -21,6 +18,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 public class TileCardStation extends TileTransactionMachine
 {
@@ -182,7 +180,23 @@ public class TileCardStation extends TileTransactionMachine
                 case SLOT_CARD:
                 {
                     state.cardAccount = UniversalCoinsServerAPI.getAddress(stack);
-                    if(state.cardAccount == null)
+                    boolean valid;
+                    if(state.cardAccount != null)
+                        try
+                        {
+                            UUID accountOwner = UniversalCoinsServer.cardDb.getAccountOwner(state.cardAccount.getNumber().toString());
+                            valid = accountOwner != null && accountOwner.equals(state.cardAccount.getOwner());
+                        }
+                        catch (DataBaseException e)
+                        {
+                            UniversalCoinsServer.logger.error(e);
+                            e.printStackTrace();
+                            valid = false;
+                        }
+                    else
+                        valid = true;
+
+                    if(state.cardAccount == null || !valid)
                     {
                         validOperations = Collections.singletonList(FUNCTION_DESTROY_CARD);
 
@@ -284,7 +298,7 @@ public class TileCardStation extends TileTransactionMachine
                         }
                         catch (DataBaseException e)
                         {
-                            UniversalCoinsServer.logger.error(e);
+                            e.printStackTrace();
 
                             validOperations = Collections.singletonList(FUNCTION_DESTROY_CARD);
                             state.reset();
@@ -361,6 +375,36 @@ public class TileCardStation extends TileTransactionMachine
         return stack;
     }
 
+    private void exportCard(final ItemStack card)
+    {
+        if(inventory[SLOT_CARD] != null)
+        {
+            state.force(GUI_TAKE_CARD, 0, false);
+            cardRemovalHook = new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    schedule(new Runnable()
+                    {
+                        @Override
+                        public void run()
+                        {
+                            setInventorySlotContents(SLOT_CARD, card);
+                            state.stopForcing();
+                            markDirty();
+                        }
+                    },0);
+                }
+            };
+        }
+        else
+        {
+            inventory[SLOT_CARD] = card;
+            markDirty();
+        }
+    }
+
     @Override
     public void onButtonPressed(final EntityPlayerMP player, int buttonId, final boolean shiftPressed)
     {
@@ -409,17 +453,46 @@ public class TileCardStation extends TileTransactionMachine
                 }
                 catch (DataBaseException e)
                 {
-                    logger.error(e);
+                    e.printStackTrace();
                     state.accountError = true;
                 }
                 scheduleUpdate();
                 break;
+            case FUNCTION_TRANSFER_CUSTOM_ACCOUNT:
+                try
+                {
+                    if(customAccountName == null || customAccountName.isEmpty() || state.customAccount == null
+                            || UniversalCoinsServer.cardDb.getCustomAccountByName(customAccountName) != null)
+                    {
+                        state.accountError = true;
+                        return;
+                    }
+
+                    state.customAccount = UniversalCoinsServer.cardDb.transferAccount(state.customAccount, customAccountName);
+                    state.accountError = false;
+                    exportCard(UniversalCoinsServerAPI.createCard(state.customAccount, true));
+                    return;
+                }
+                catch (DataBaseException e)
+                {
+                    e.printStackTrace();
+                    state.accountError = true;
+                    return;
+                }
             case FUNCTION_NEW_CUSTOM_ACCOUNT_OR_CARD:
                 try
                 {
                     boolean createAccount;
                     if(customAccountName == null && state.customAccount != null)
+                    {
                         createAccount = false;
+                        PlayerData playerData = UniversalCoinsServer.cardDb.getPlayerData(state.playerUID);
+                        if(playerData.getAlternativeAccounts().size() > 1)
+                        {
+                            state.accountError = true;
+                            return;
+                        }
+                    }
                     else if(customAccountName == null||customAccountName.isEmpty())
                     {
                         state.accountError = true;
@@ -428,7 +501,7 @@ public class TileCardStation extends TileTransactionMachine
                     else
                     {
                         AccountAddress other = UniversalCoinsServer.cardDb.getCustomAccountByName(customAccountName);
-                        if(other != null)
+                        if(other != null && !other.getOwner().equals(state.playerUID))
                         {
                             state.accountError = true;
                             return;
@@ -439,40 +512,16 @@ public class TileCardStation extends TileTransactionMachine
                     if(createAccount)
                         state.customAccount = UniversalCoinsServer.cardDb.createCustomAccount(state.playerUID, customAccountName);
 
-                    final ItemStack card = UniversalCoinsServerAPI.createCard(state.customAccount, false);
-                    if(inventory[SLOT_CARD] != null)
-                    {
-                        state.force(GUI_TAKE_CARD, 0, false);
-                        cardRemovalHook = new Runnable()
-                        {
-                            @Override
-                            public void run()
-                            {
-                                schedule(new Runnable()
-                                {
-                                    @Override
-                                    public void run()
-                                    {
-                                        inventory[SLOT_CARD] = card;
-                                        state.stopForcing();
-                                        markDirty();
-                                    }
-                                },0);
-                            }
-                        };
-                    }
-                    else
-                    {
-                        inventory[SLOT_CARD] = card;
-                        markDirty();
-                    }
+                    ItemStack card = UniversalCoinsServerAPI.createCard(state.customAccount, true);
+                    exportCard(card);
 
                     return;
                 }
                 catch (DataBaseException e)
                 {
                     state.accountError = true;
-                    logger.error(e);
+                    e.printStackTrace();
+                    return;
                 }
             case FUNCTION_NEW_CARD:
                 try
@@ -488,7 +537,7 @@ public class TileCardStation extends TileTransactionMachine
                 }
                 catch (DataBaseException e)
                 {
-                    logger.error(e);
+                    e.printStackTrace();
                     state.accountError = true;
                 }
                 scheduleUpdate();
@@ -547,7 +596,7 @@ public class TileCardStation extends TileTransactionMachine
                 }
                 catch (DataBaseException e)
                 {
-                    logger.error(e);
+                    e.printStackTrace();
                     state.accountError = true;
                 }
         }

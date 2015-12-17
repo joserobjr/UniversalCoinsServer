@@ -11,6 +11,7 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 
+import java.util.Collection;
 import java.util.UUID;
 
 public class TileCardStationMessage implements IMessage, IMessageHandler<TileCardStationMessage, IMessage>
@@ -60,7 +61,19 @@ public class TileCardStationMessage implements IMessage, IMessageHandler<TileCar
     public void setPlayerData(PlayerData playerData)
     {
         primaryAccount = playerData.getPrimaryAccount();
-        customAccount = playerData.getAlternativeAccounts().isEmpty()?null:playerData.getAlternativeAccounts().iterator().next();
+        Collection<AccountAddress> alternativeAccounts = playerData.getAlternativeAccounts();
+        int size = alternativeAccounts.size();
+        if(size > 1)
+        {
+            if(alternativeAccounts.contains(cardAccount))
+                customAccount = cardAccount;
+            else
+                customAccount = null;
+        }
+        else if(size == 1)
+            customAccount = alternativeAccounts.iterator().next();
+        else
+            customAccount = null;
     }
 
     @Override

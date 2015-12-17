@@ -53,4 +53,6 @@ public interface CardDataBase
     AccountAddress getCustomAccountByName(String customAccountName) throws DataBaseException;
 
     AccountAddress createCustomAccount(UUID playerUID, String customAccountName) throws DataBaseException;
+
+    AccountAddress transferAccount(AccountAddress origin, String destiny) throws DataBaseException;
 }

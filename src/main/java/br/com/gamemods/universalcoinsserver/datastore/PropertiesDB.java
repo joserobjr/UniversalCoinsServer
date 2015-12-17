@@ -106,16 +106,22 @@ public class PropertiesDB implements CardDataBase
             String number = properties.getProperty("account");
             AccountAddress primary;
             List<AccountAddress> alternativeAccounts;
+            AccountAddress removedPrimary=null;
+            List<AccountAddress> removedAlternatives=null;
             if(number == null)
                 primary = null;
             else
             {
                 String[] split = number.split(";", 2);
                 Properties accountProperties = loadAccount(split[0]);
+                AccountAddress address = new AccountAddress(split[0], split[1], playerUID);
                 if(accountProperties == null || accountProperties.getProperty("removed", "false").equals("true"))
+                {
+                    removedPrimary = address;
                     primary = null;
+                }
                 else
-                    primary = new AccountAddress(split[0], split[1], playerUID);
+                    primary = address;
             }
 
             number = properties.getProperty("alternative.accounts");
@@ -129,12 +135,48 @@ public class PropertiesDB implements CardDataBase
                 {
                     String[] split = str.split(";",2);
                     Properties accountProperties = loadAccount(split[0]);
+                    AccountAddress address = new AccountAddress(split[0], split[1], playerUID);
                     if(accountProperties == null || accountProperties.getProperty("removed", "false").equals("true"))
+                    {
+                        if(removedAlternatives == null)
+                            removedAlternatives = new ArrayList<>(1);
+                        removedAlternatives.add(address);
                         continue;
+                    }
 
-                    alternativeAccounts.add(new AccountAddress(split[0], split[1], playerUID));
+                    alternativeAccounts.add(address);
                 }
             }
+
+            if(removedPrimary != null)
+            {
+                concat(properties, "removed.primary", removedPrimary);
+                properties.setProperty("account","");
+            }
+
+            if(removedAlternatives != null)
+            {
+                for (AccountAddress address : removedAlternatives)
+                    concat(properties, "removed.alternative", address);
+
+                properties.setProperty("alternative.accounts", "");
+                for(AccountAddress address: alternativeAccounts)
+                    concat(properties, "alternative.accounts", address);
+            }
+
+            if(removedPrimary != null || removedAlternatives != null)
+            {
+                incrementInt(properties, "version", Integer.MIN_VALUE);
+                try(FileWriter writer = new FileWriter(getPlayerFile(playerUID)))
+                {
+                    properties.store(writer, "Removed some accounts");
+                }
+                catch (Exception e)
+                {
+                    e.printStackTrace();
+                }
+            }
+
 
             return new PlayerData(version, playerUID, primary, alternativeAccounts);
         }
@@ -142,6 +184,16 @@ public class PropertiesDB implements CardDataBase
         {
             throw new DataBaseException(e);
         }
+    }
+
+    private void concat(Properties properties, String key, AccountAddress address)
+    {
+        String val = properties.getProperty("key", "");
+        if(val.isEmpty())
+            val = address.getNumber()+";"+address.getName();
+        else
+            val += "|"+address.getNumber()+";"+address.getName();
+        properties.setProperty(key, val);
     }
 
     private String generateAccountNumber()
@@ -217,7 +269,7 @@ public class PropertiesDB implements CardDataBase
     public UUID getAccountOwner(String account) throws DataBaseException
     {
         Properties properties = loadAccount(account);
-        if (properties == null)
+        if (properties == null || properties.getProperty("removed", "false").equals("true"))
             return null;
         try
         {
@@ -353,6 +405,83 @@ public class PropertiesDB implements CardDataBase
     private int readVersion(Properties properties)
     {
         return readInt(properties, "version", Integer.MIN_VALUE);
+    }
+
+    @Override
+    public AccountAddress transferAccount(AccountAddress origin, String destiny) throws DataBaseException
+    {
+        Properties originAccount = loadAccount(origin.getNumber().toString());
+        if(originAccount == null || originAccount.getProperty("removed","false").equals("true"))
+            throw new AccountNotFoundException(origin.getNumber());
+
+        Properties playerData = loadPlayer(origin.getOwner());
+        int playerVersion = readVersion(playerData);
+        int originVersion = readVersion(originAccount);
+
+        AccountAddress address = createCustomAccount(origin.getOwner(), destiny);
+
+        Properties destinyAccount = loadAccount(address.getNumber().toString());
+        destinyAccount.setProperty("balance", originAccount.getProperty("balance", "0"));
+        originAccount.setProperty("balance", "0");
+        originAccount.setProperty("removed", "true");
+        originAccount.setProperty("transferred.number", address.getNumber().toString());
+        originAccount.setProperty("transferred.name", address.getName());
+        String property = playerData.getProperty("alternative.accounts", "");
+        if(property.isEmpty())
+            playerData.setProperty("alternative.accounts", address.getNumber()+";"+address.getName());
+        else
+            playerData.setProperty("alternative.accounts", property+"|"+address.getNumber()+";"+address.getName());
+
+        incrementInt(playerData, "version", 2, Integer.MIN_VALUE);
+        incrementInt(originAccount, "version", Integer.MIN_VALUE);
+        incrementInt(destinyAccount, "version", Integer.MIN_VALUE);
+
+        try
+        {
+            try (FileWriter writer = new FileWriter(getAccountFile(origin.getNumber().toString())))
+            {
+                originAccount.store(writer, "Transferred to " + address.getNumber());
+            }
+
+            try(FileWriter writer = new FileWriter(getAccountFile(address.getNumber().toString())))
+            {
+                destinyAccount.store(writer, "Transferred from "+origin.getNumber());
+            }
+
+            try(FileWriter writer = new FileWriter(getPlayerFile(origin.getOwner())))
+            {
+                playerData.store(writer, "Transferred "+origin.getNumber()+"("+origin.getName()+") to "+address.getNumber()+"("+address.getName()+")");
+            }
+
+            try
+            {
+                Properties properties = new SortedProperties();
+                File customAccount = getCustomAccountFile(origin.getName());
+                try(FileReader reader = new FileReader(customAccount))
+                {
+                    properties.load(reader);
+                }
+
+                properties.setProperty("removed", "true");
+                properties.setProperty("transferred", address.getNumber().toString());
+                incrementInt(properties, "version", Integer.MIN_VALUE);
+
+                try(FileWriter writer = new FileWriter(customAccount))
+                {
+                    properties.store(writer, "Transferred to " + address.getNumber());
+                }
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+
+            return address;
+        }
+        catch (Exception e)
+        {
+            throw new DataBaseException(e);
+        }
     }
 
     @Override
