@@ -1,6 +1,8 @@
 package br.com.gamemods.universalcoinsserver.api;
 
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
+import br.com.gamemods.universalcoinsserver.datastore.AccountAddress;
+import br.com.gamemods.universalcoinsserver.item.ItemCard;
 import br.com.gamemods.universalcoinsserver.item.ItemCoin;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityItem;
@@ -386,6 +388,19 @@ public class UniversalCoinsServerAPI
         if(stack.stackSize > stack.getMaxStackSize())
             stack.stackSize = stack.getMaxStackSize();
         return stack;
+    }
+
+    @Nullable
+    public static AccountAddress getAddress(@Nullable ItemStack cardStack)
+    {
+        if(cardStack == null || cardStack.stackSize <= 0 || cardStack.stackTagCompound == null)
+            return null;
+
+        Item item = cardStack.getItem();
+        if(!(item instanceof ItemCard))
+            return null;
+
+        return ((ItemCard) item).getAccountAddress(cardStack);
     }
 
     public static boolean matches(ItemStack stack, ItemStack otherStack)

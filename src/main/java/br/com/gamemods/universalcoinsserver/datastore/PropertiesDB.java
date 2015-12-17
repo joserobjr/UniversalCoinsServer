@@ -7,6 +7,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
+import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -39,14 +40,13 @@ public class PropertiesDB implements CardDataBase
         return dir;
     }
 
-    private Properties loadAccount(String account) throws DataBaseException
+    private Properties loadProperties(File file) throws DataBaseException
     {
-        File accountFile = new File(accounts, account+".properties");
-        if(!accountFile.isFile())
+        if(!file.isFile())
             return null;
 
         Properties properties = new SortedProperties();
-        try(FileReader reader = new FileReader(accountFile))
+        try(FileReader reader = new FileReader(file))
         {
             properties.load(reader);
         }
@@ -56,6 +56,29 @@ public class PropertiesDB implements CardDataBase
         }
 
         return properties;
+    }
+
+    private Properties loadPlayer(UUID playerId) throws DataBaseException
+    {
+        if(playerId == null)
+            throw new NullPointerException("playerId");
+
+        File playerFile = new File(players, playerId+".properties");
+        Properties playerData;
+        if(!playerFile.isFile() || (playerData = loadProperties(playerFile)) == null)
+            playerData = new SortedProperties();
+
+        if(!playerData.containsKey("version"))
+            playerData.setProperty("version", Integer.toString(Integer.MIN_VALUE));
+        if(!playerData.containsKey("id"))
+            playerData.setProperty("id", playerId.toString());
+
+        return playerData;
+    }
+
+    private Properties loadAccount(String account) throws DataBaseException
+    {
+        return loadProperties(new File(accounts, account+".properties"));
     }
 
     private void saveAccount(String account, Properties properties) throws DataBaseException
@@ -71,6 +94,98 @@ public class PropertiesDB implements CardDataBase
         }
     }
 
+    @Nonnull
+    @Override
+    public PlayerData getPlayerData(@Nonnull UUID playerUID) throws DataBaseException
+    {
+        Properties properties = loadPlayer(playerUID);
+        try
+        {
+            int version = Integer.parseInt(properties.getProperty("version", Integer.toString(Integer.MIN_VALUE)));
+            String number = properties.getProperty("account");
+            AccountAddress primary;
+            List<AccountAddress> alternativeAccounts;
+            if(number == null)
+                primary = null;
+            else
+            {
+                String[] split = number.split(";", 2);
+                primary = new AccountAddress(split[0], split[1], playerUID);
+            }
+
+            number = properties.getProperty("alternative.accounts");
+            if(number == null)
+                alternativeAccounts = null;
+            else
+            {
+                String[] accountSplit = number.split("\\|");
+                alternativeAccounts = new ArrayList<>(accountSplit.length);
+                for(String str: accountSplit)
+                {
+                    String[] split = str.split(";",2);
+                    alternativeAccounts.add(new AccountAddress(split[0], split[1], playerUID));
+                }
+            }
+
+            return new PlayerData(version, playerUID, primary, alternativeAccounts);
+        }
+        catch (Exception e)
+        {
+            throw new DataBaseException(e);
+        }
+    }
+
+    private String generateAccountNumber()
+    {
+        String str = Long.toString((long) (Math.floor(Math.random() * 99999999999L) + 11111111111L));
+        return str.substring(0,3)+"."+str.substring(3,6)+"."+str.substring(6,9)+"-"+str.substring(9);
+    }
+
+    @Nonnull
+    @Override
+    public AccountAddress createPrimaryAccount(@Nonnull UUID playerUID, @Nonnull String name) throws DataBaseException
+    {
+        Properties playerData = loadPlayer(playerUID);
+        if(playerData.containsKey("account"))
+            throw new DataBaseException("Player "+playerUID+" already have an account: "+playerData.getProperty("account"));
+
+        try
+        {
+            int version = Integer.parseInt(playerData.getProperty("version", Integer.toString(Integer.MIN_VALUE)));
+
+            String number;
+            File file;
+            do
+            {
+                number = generateAccountNumber();
+                file = new File(accounts, number+".properties");
+            } while (file.exists());
+
+            Properties properties = new SortedProperties();
+            properties.setProperty("version", Integer.toString(Integer.MIN_VALUE));
+            properties.setProperty("number", number);
+            properties.setProperty("owner.id", playerUID.toString());
+            properties.setProperty("balance", "0");
+
+            try(FileWriter writer = new FileWriter(file))
+            {
+                properties.store(writer, "Recently created");
+            }
+
+            playerData.setProperty("version", Integer.toString(version+1));
+            playerData.setProperty("account", number+";"+name);
+            try(FileWriter writer = new FileWriter(new File(players, playerUID+".properties")))
+            {
+                playerData.store(writer, "Primary account created");
+            }
+
+            return new AccountAddress(number, name, playerUID);
+        }
+        catch (Exception e)
+        {
+            throw new DataBaseException(e);
+        }
+    }
 
     @Override
     public UUID getAccountOwner(String account) throws DataBaseException
@@ -89,15 +204,15 @@ public class PropertiesDB implements CardDataBase
     }
 
     @Override
-    public int getAccountBalance(String account) throws DataBaseException
+    public int getAccountBalance(Object account) throws DataBaseException
     {
-        Properties properties = loadAccount(account);
+        Properties properties = loadAccount(account.toString());
         if(properties == null)
             return -1;
 
         try
         {
-            return Integer.parseInt(properties.getProperty("balance"));
+            return Integer.parseInt(properties.getProperty("balance", "0"));
         }
         catch (Exception e)
         {
@@ -167,20 +282,7 @@ public class PropertiesDB implements CardDataBase
     {
         try
         {
-            File file = getMachineFile(machine);
-
-            Properties properties = new SortedProperties();
-
-            if (file.isFile())
-            {
-                try (FileReader reader = new FileReader(file))
-                {
-                    properties.load(reader);
-                    return properties;
-                }
-            }
-            else
-                return null;
+            return loadProperties(getMachineFile(machine));
         }
         catch (Exception e)
         {
@@ -265,7 +367,7 @@ public class PropertiesDB implements CardDataBase
     }
 
     @Override
-    public void saveNewMachine(Machine machine) throws DataBaseException
+    public void saveNewMachine(@Nonnull Machine machine) throws DataBaseException
     {
         File file;
         try
@@ -296,7 +398,7 @@ public class PropertiesDB implements CardDataBase
     }
 
     @Override
-    public void saveTransaction(Transaction transaction) throws DataBaseException
+    public void saveTransaction(@Nonnull Transaction transaction) throws DataBaseException
     {
         Machine machine = transaction.getMachine();
         if (machine == null)
