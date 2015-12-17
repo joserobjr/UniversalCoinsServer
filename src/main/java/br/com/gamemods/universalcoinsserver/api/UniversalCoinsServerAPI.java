@@ -347,6 +347,15 @@ public class UniversalCoinsServerAPI
         return ((ItemCoin) item).getValue() * stack.stackSize;
     }
 
+    public static int stackValue(@Nullable Collection<ItemStack> stacks)
+    {
+        if(stacks == null) return 0;
+        int value = 0;
+        for(ItemStack stack: stacks)
+            value += stackValue(stack);
+        return value;
+    }
+
     public static List<ItemStack> createStacks(int coins)
     {
         ArrayList<ItemStack> stacks = new ArrayList<>();

@@ -1,6 +1,9 @@
 package br.com.gamemods.universalcoinsserver.datastore;
 
+import net.minecraft.item.ItemStack;
+
 import javax.annotation.Nonnull;
+import java.util.Collection;
 import java.util.UUID;
 
 public interface CardDataBase
@@ -9,7 +12,29 @@ public interface CardDataBase
 
     int getAccountBalance(Object account) throws DataBaseException;
 
+    int canDeposit(Object account, Collection<ItemStack> coins) throws DataBaseException;
+
+    int canDeposit(Object account, ItemStack coins) throws DataBaseException;
+
+    int canDeposit(Object account, int coins) throws DataBaseException;
+
+    @Deprecated
     boolean depositToAccount(String account, int depositAmount, Operator operator, TransactionType transaction, String product) throws DataBaseException;
+
+    /**
+     *
+     * @return Amount of coins that were taken from the item stack but couldn't be stored on the account
+     * @throws DataBaseException
+     */
+    int depositToAccount(Object account, Collection<ItemStack> coins, Transaction transaction) throws DataBaseException;
+
+    /**
+     * @see #depositToAccount(Object, Collection, Transaction)
+     * @throws DataBaseException
+     */
+    int depositToAccount(Object account, ItemStack coins, Transaction transaction) throws DataBaseException;
+
+    int depositToAccount(Object account, int coins, Transaction transaction) throws DataBaseException;
 
     void saveNewMachine(@Nonnull Machine machine) throws DataBaseException;
 

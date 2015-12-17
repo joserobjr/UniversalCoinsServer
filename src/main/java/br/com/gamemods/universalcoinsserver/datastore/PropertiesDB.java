@@ -1,5 +1,6 @@
 package br.com.gamemods.universalcoinsserver.datastore;
 
+import br.com.gamemods.universalcoinsserver.api.UniversalCoinsServerAPI;
 import br.com.gamemods.universalcoinsserver.blocks.PlayerOwned;
 import br.com.gamemods.universalcoinsserver.tile.TileVendor;
 import cpw.mods.fml.common.registry.GameData;
@@ -220,7 +221,113 @@ public class PropertiesDB implements CardDataBase
         }
     }
 
+    private int canDeposit(long balance, int deposit)
+    {
+        balance += deposit;
+        balance = Integer.MAX_VALUE - balance;
+        if(balance < Integer.MIN_VALUE)
+            return Integer.MIN_VALUE;
+        else if(balance > Integer.MAX_VALUE)
+            return Integer.MAX_VALUE;
+        return (int) balance;
+    }
+
     @Override
+    public int canDeposit(Object account, int coins) throws DataBaseException
+    {
+        Properties properties = loadAccount(account.toString());
+
+        try
+        {
+            return canDeposit(Integer.parseInt(properties.getProperty("balance")), coins);
+        }
+        catch (Exception e)
+        {
+            throw new DataBaseException(e);
+        }
+    }
+
+    @Override
+    public int canDeposit(Object account, ItemStack coins) throws DataBaseException
+    {
+        return canDeposit(account, UniversalCoinsServerAPI.stackValue(coins));
+    }
+
+    @Override
+    public int canDeposit(Object account, Collection<ItemStack> coins) throws DataBaseException
+    {
+        return canDeposit(account, UniversalCoinsServerAPI.stackValue(coins));
+    }
+
+    @Override
+    public int depositToAccount(Object account, ItemStack coins, Transaction transaction) throws DataBaseException
+    {
+        return depositToAccount(account, Collections.singleton(coins), transaction);
+    }
+
+    private int incrementInt(Properties properties, String key, int defaultValue)
+    {
+        int current = Integer.parseInt(properties.getProperty(key, Integer.toString(defaultValue)));
+        properties.setProperty(key, Integer.toString(++current));
+        return current;
+    }
+
+    private File getAccountFile(String account)
+    {
+        return new File(accounts, account+".properties");
+    }
+
+    @Override
+    public int depositToAccount(Object account, Collection<ItemStack> coinsStacks, Transaction transaction) throws DataBaseException
+    {
+        int value = UniversalCoinsServerAPI.stackValue(coinsStacks);
+        if(value == 0)
+            return 0;
+
+        Properties properties = loadAccount(account.toString());
+        return deposit(properties, account.toString(), value, transaction);
+    }
+
+    private int deposit(Properties properties, String account, int value, Transaction transaction) throws DataBaseException
+    {
+        try
+        {
+            int balance = Integer.parseInt(properties.getProperty("balance"));
+            if(canDeposit(balance, value) < 0)
+                return 0;
+
+            properties.setProperty("balance", Integer.toString(balance+value));
+            incrementInt(properties, "version", Integer.MIN_VALUE);
+
+            try(FileWriter writer = new FileWriter(getAccountFile(account)))
+            {
+                properties.store(writer, "Balance increased by "+value);
+            }
+
+            try
+            {
+                saveTransaction(transaction);
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+            return 0;
+        }
+        catch (Exception e)
+        {
+            throw new DataBaseException(e);
+        }
+    }
+
+    @Override
+    public int depositToAccount(Object account, int value, Transaction transaction) throws DataBaseException
+    {
+        Properties properties = loadAccount(account.toString());
+        return deposit(properties, account.toString(), value, transaction);
+    }
+
+    @Override @Deprecated
     public boolean depositToAccount(String account, int depositAmount, Operator operator, TransactionType transaction, String product) throws DataBaseException
     {
         Properties properties = loadAccount(account);
@@ -484,8 +591,10 @@ public class PropertiesDB implements CardDataBase
             {
                 properties.put(key+".type", "card");
                 Transaction.CardCoinSource card = (Transaction.CardCoinSource) coinSource;
-                properties.put(key+".account.number", card.getAccountNumber());
-                properties.put(key+".account.owner", card.getAccountOwner());
+                AccountAddress accountAddress = card.getAccountAddress();
+                properties.put(key+".account.number", accountAddress.getNumber());
+                properties.put(key+".account.owner", accountAddress.getOwner());
+                properties.put(key+".account.name", accountAddress.getName());
                 store(properties, key+".card", card.getCard());
             }
             else if(coinSource instanceof Transaction.InventoryCoinSource)

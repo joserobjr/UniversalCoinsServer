@@ -1,5 +1,7 @@
 package br.com.gamemods.universalcoinsserver.datastore;
 
+import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
+import br.com.gamemods.universalcoinsserver.api.UniversalCoinsServerAPI;
 import br.com.gamemods.universalcoinsserver.tile.TilePackager;
 import br.com.gamemods.universalcoinsserver.tile.TileSignal;
 import br.com.gamemods.universalcoinsserver.tile.TileSlots;
@@ -82,6 +84,24 @@ public final class Transaction
         this.operator = operator;
     }
 
+    public Transaction(Machine machine, Operation operation, Operator operator,
+                       MachineCoinSource machineCoinSource, CardCoinSource cardCoinSource,
+                       ItemStack product)
+    {
+        if(operation != Operation.DEPOSIT_TO_ACCOUNT_FROM_MACHINE)
+            throw new IllegalArgumentException();
+
+        this.operator = operator;
+        this.operation = operation;
+        this.machine = machine;
+        this.quantity = 1;
+        this.userCoinSource = cardCoinSource;
+        this.ownerCoinSource = machineCoinSource;
+        this.price = cardCoinSource.getBalanceAfter() - cardCoinSource.getBalanceBefore();
+        this.totalPrice = price;
+        this.product = product;
+    }
+
     public static abstract class CoinSource
     {
         public abstract int getBalanceBefore();
@@ -91,19 +111,25 @@ public final class Transaction
     public static class CardCoinSource extends CoinSource
     {
         private ItemStack card;
-        private String accountNumber;
-        private String accountOwner;
+        private AccountAddress accountAddress;
         private int balanceBefore;
         private int balanceAfter;
 
-        public String getAccountNumber()
+        public CardCoinSource(ItemStack card, int increment) throws DataBaseException, NullPointerException
         {
-            return accountNumber;
+            if(card == null)
+                throw new NullPointerException("card");
+            this.card = card;
+            accountAddress = UniversalCoinsServerAPI.getAddress(card);
+            if(accountAddress == null)
+                throw new NullPointerException("accountAddress");
+            balanceBefore = UniversalCoinsServer.cardDb.getAccountBalance(accountAddress.getNumber());
+            balanceAfter = balanceBefore + increment;
         }
 
-        public String getAccountOwner()
+        public AccountAddress getAccountAddress()
         {
-            return accountOwner;
+            return accountAddress;
         }
 
         public ItemStack getCard()
@@ -127,9 +153,8 @@ public final class Transaction
         public String toString()
         {
             return "CardCoinSource{" +
-                    "accountNumber='" + accountNumber + '\'' +
+                    "accountAddress='" + accountAddress + '\'' +
                     ", card=" + card +
-                    ", accountOwner='" + accountOwner + '\'' +
                     ", balanceBefore=" + balanceBefore +
                     ", balanceAfter=" + balanceAfter +
                     '}';
@@ -229,7 +254,8 @@ public final class Transaction
         BUY_FROM_MACHINE,
         SELL_TO_MACHINE,
         DEPOSIT_TO_MACHINE,
-        SLOTS_WIN_5_MATCH, SLOTS_WIN_4_MATCH, WITHDRAW_FROM_MACHINE
+        SLOTS_WIN_5_MATCH, SLOTS_WIN_4_MATCH, WITHDRAW_FROM_MACHINE,
+        DEPOSIT_TO_ACCOUNT_FROM_MACHINE
     }
 
     public UUID getId()

@@ -9,6 +9,7 @@ import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
 
 import java.util.UUID;
 
@@ -22,6 +23,7 @@ public class TileCardStationMessage implements IMessage, IMessageHandler<TileCar
     public AccountAddress cardAccount;
     public String playerName;
     public UUID playerUID;
+    public ItemStack activeCard;
 
     public void reset()
     {
@@ -36,6 +38,7 @@ public class TileCardStationMessage implements IMessage, IMessageHandler<TileCar
         accountBalance = 0;
         primaryAccount = null;
         customAccount = null;
+        activeCard = null;
         setOpener(owner.opener);
     }
 
