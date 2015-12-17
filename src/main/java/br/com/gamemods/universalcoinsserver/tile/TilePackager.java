@@ -50,6 +50,7 @@ public class TilePackager extends TileTransactionMachine
     private boolean outputUnlocked;
     private String targetName = "";
     public UUID targetId;
+    private AccountAddress card;
 
     public void validateFields()
     {
@@ -64,6 +65,21 @@ public class TilePackager extends TileTransactionMachine
 
         if(userCoins < 0)
             userCoins = 0;
+
+        updateCard();
+    }
+
+    public void updateCard()
+    {
+        ItemStack stack = inventory[SLOT_CARD];
+        Object before = card;
+        if(UniversalCoinsServerAPI.canCardBeUsedBy(stack, opener) && UniversalCoinsServerAPI.getCardBalanceSafely(stack) >= price[packageSize])
+            card = UniversalCoinsServerAPI.getAddress(stack);
+        else
+            card = null;
+
+        if(!Objects.equals(before, card))
+            scheduleUpdate();
     }
 
 
@@ -101,6 +117,9 @@ public class TilePackager extends TileTransactionMachine
                     inventory[slot] = null;
             }
         }
+        else if(slot == SLOT_CARD)
+            updateCard();
+
         markDirty();
     }
 
@@ -296,7 +315,10 @@ public class TilePackager extends TileTransactionMachine
         if(firstSlot < 0)
             throw new IllegalArgumentException("firstSlot < 0: "+firstSlot);
 
-        if(userCoins < price[packageSize])
+        updateCard();
+
+        int price = this.price[packageSize];
+        if(card == null && userCoins < price)
         {
             scheduleUpdate();
             return;
@@ -325,10 +347,16 @@ public class TilePackager extends TileTransactionMachine
             try
             {
                 Transaction transaction = new Transaction(this, Transaction.Operation.BUY_FROM_MACHINE,
-                        new PlayerOperator(opener), packageSize, new Transaction.MachineCoinSource(this, userCoins, price[packageSize]),
+                        new PlayerOperator(opener), packageSize,
+                        card == null?new Transaction.MachineCoinSource(this, userCoins, -price)
+                                :new Transaction.CardCoinSource(card, -price)
+                        ,
                         stack);
 
-                UniversalCoinsServer.cardDb.saveTransaction(transaction);
+                if(card != null)
+                    UniversalCoinsServer.cardDb.takeFromAccount(card, -price, transaction);
+                else
+                    UniversalCoinsServer.cardDb.saveTransaction(transaction);
             }
             catch (DataBaseException e)
             {
@@ -339,7 +367,9 @@ public class TilePackager extends TileTransactionMachine
             for (int slot = firstSlot; slot <= SLOT_PACKAGE_END; slot++)
                 inventory[slot] = null;
 
-            userCoins -= price[packageSize];
+            if(card == null)
+                userCoins -= price;
+
             validateFields();
             markDirty();
         }
@@ -349,6 +379,7 @@ public class TilePackager extends TileTransactionMachine
     {
         if(size > 2) throw new IllegalArgumentException("size > 2: "+size);
         this.packageSize = size;
+        updateCard();
 
         int firstSlot = (2-size) * 2;
         if(firstSlot == 0)
@@ -445,7 +476,7 @@ public class TilePackager extends TileTransactionMachine
 
         tagCompound.setTag("Inventory", itemList);
         tagCompound.setInteger("coinSum", userCoins);
-        tagCompound.setBoolean("cardAvailable", false);
+        tagCompound.setBoolean("cardAvailable", card != null);
         tagCompound.setString("customName", "");
         tagCompound.setString("packageTarget", targetName);
         if(targetId != null) tagCompound.setString("packageTargetId", targetId.toString());
@@ -559,6 +590,10 @@ public class TilePackager extends TileTransactionMachine
             }
             markDirty();
         }
+
+        if(slot == SLOT_CARD)
+            updateCard();
+
         return stack;
     }
 
@@ -611,5 +646,12 @@ public class TilePackager extends TileTransactionMachine
         }
 
         return outputUnlocked && slot == SLOT_OUTPUT || slot != SLOT_COIN_INPUT && slot != SLOT_OUTPUT;
+    }
+
+    @Override
+    public void setOpener(EntityPlayer opener)
+    {
+        super.setOpener(opener);
+        updateCard();
     }
 }

@@ -230,6 +230,7 @@ public class TileSlots extends TileTransactionMachine
             reelPos[i] = reelStops[rnd];
         }
         waitingCheck = true;
+        updateCard();
         markDirty();
     }
 
