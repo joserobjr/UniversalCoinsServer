@@ -152,7 +152,8 @@ public class PropertiesDB implements CardDataBase
             World worldObj = te.getWorldObj();
             sb.append(" | DIM:").append(worldObj==null?"?":worldObj.provider.dimensionId)
                     .append(" | X:").append(te.xCoord).append(" | Y:").append(te.yCoord).append(" | Z:").append(te.zCoord)
-                    .append(" | Block:").append(GameData.getBlockRegistry().getNameForObject(te.getBlockType())).append(" | BlockMeta:").append(te.getBlockMetadata());
+                    .append(" | Block:").append(worldObj==null?"?":GameData.getBlockRegistry().getNameForObject(te.getBlockType()))
+                    .append(" | BlockMeta:").append(worldObj==null?"?":te.getBlockMetadata());
         }
     }
 
