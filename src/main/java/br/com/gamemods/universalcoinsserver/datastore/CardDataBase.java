@@ -19,7 +19,8 @@ public interface CardDataBase
     int canDeposit(Object account, int coins) throws DataBaseException;
 
     @Deprecated
-    boolean depositToAccount(String account, int depositAmount, Operator operator, TransactionType transaction, String product) throws DataBaseException;
+    boolean depositToAccount(String account, int depositAmount, Operator operator, TransactionType transaction, String product)
+            throws DataBaseException, IllegalArgumentException;
 
     /**
      *
@@ -34,7 +35,7 @@ public interface CardDataBase
      */
     int depositToAccount(Object account, ItemStack coins, Transaction transaction) throws DataBaseException;
 
-    int depositToAccount(Object account, int coins, Transaction transaction) throws DataBaseException;
+    int depositToAccount(Object account, int coins, Transaction transaction) throws DataBaseException, IllegalArgumentException;
 
     void saveNewMachine(@Nonnull Machine machine) throws DataBaseException;
 
@@ -45,4 +46,7 @@ public interface CardDataBase
 
     @Nonnull
     AccountAddress createPrimaryAccount(@Nonnull UUID playerUID, @Nonnull String name) throws DataBaseException;
+
+    @SuppressWarnings("DuplicateThrows")
+    int takeFromAccount(Object account, int amount, Transaction transaction) throws DataBaseException, OutOfCoinsException;
 }

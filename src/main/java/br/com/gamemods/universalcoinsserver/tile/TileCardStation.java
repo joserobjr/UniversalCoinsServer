@@ -70,6 +70,7 @@ public class TileCardStation extends TileTransactionMachine
     private int scheduleTicks = -1;
     private ItemStack depositFailure = null;
     private Runnable cardRemovalHook;
+    public Runnable[] customButtonOperation;
 
     public TileCardStation()
     {
@@ -115,7 +116,7 @@ public class TileCardStation extends TileTransactionMachine
                             Transaction.Operation.DEPOSIT_TO_ACCOUNT_FROM_MACHINE,
                             new PlayerOperator(opener),
                             null,
-                            new Transaction.CardCoinSource(state.activeCard, value),
+                            createCardCoinSource(value),
                             stack
                     );
 
@@ -258,6 +259,14 @@ public class TileCardStation extends TileTransactionMachine
                                 state.accountBalance = UniversalCoinsServer.cardDb.getAccountBalance(state.cardAccount.getNumber());
                                 state.forcedMenuState = GUI_TAKE_CARD;
                                 state.accountError = false;
+                                customButtonOperation = new Runnable[]{null,null,null,new Runnable()
+                                {
+                                    @Override
+                                    public void run()
+                                    {
+                                        state.stopForcing();
+                                    }
+                                }};
                             }
                         }
                         catch (DataBaseException e)
@@ -275,6 +284,20 @@ public class TileCardStation extends TileTransactionMachine
         }
         else if(slot == SLOT_CARD)
             onCardRemoved();
+        else if(slot == SLOT_COIN)
+        {
+            if(schedule == null)
+                schedule(new Runnable()
+                {
+                    @Override
+                    public void run()
+                    {
+                        fillCoinSlot();
+                    }
+                }, 0);
+            else
+                fillCoinSlot();
+        }
     }
 
     @Override
@@ -284,19 +307,29 @@ public class TileCardStation extends TileTransactionMachine
         if (stack != null)
         {
             if (stack.stackSize <= size)
-                setInventorySlotContents(slot, null);
+                inventory[slot] = null;
             else
             {
                 stack = stack.splitStack(size);
                 if (stack.stackSize == 0)
-                    setInventorySlotContents(slot, null);
+                    inventory[slot] = null;
             }
         }
 
         if(slot == SLOT_CARD && inventory[SLOT_CARD] == null)
             onCardRemoved();
 
-        fillCoinSlot();
+        if(schedule == null)
+            schedule(new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    fillCoinSlot();
+                }
+            }, 0);
+        else
+            fillCoinSlot();
         return stack;
     }
 
@@ -305,6 +338,18 @@ public class TileCardStation extends TileTransactionMachine
     {
         Logger logger = UniversalCoinsServer.logger;
         logger.info("Button: " + buttonId);
+
+        if(buttonId < 0 && state.forcedMenuState >= 0)
+        {
+            buttonId = -1-buttonId;
+            if(customButtonOperation != null && customButtonOperation.length>buttonId)
+            {
+                Runnable runnable = customButtonOperation[buttonId];
+                if(runnable != null)
+                    runnable.run();
+            }
+            return;
+        }
 
         if(validOperations != null && !validOperations.contains(buttonId))
         {
@@ -316,13 +361,21 @@ public class TileCardStation extends TileTransactionMachine
 
         switch (buttonId)
         {
+            case FUNCTION_NONE:
+                state.depositCoins = false;
+                state.withdrawCoins = false;
+                break;
             case FUNCTION_ACCOUNT_INFO:
                 try
                 {
                     state.reset();
                     state.setPlayerData(UniversalCoinsServer.cardDb.getPlayerData(state.playerUID));
                     state.cardAccount = state.primaryAccount;
-                    getDescriptionPacket();
+                    if(state.cardAccount != null)
+                    {
+                        state.accountBalance = UniversalCoinsServer.cardDb.getAccountBalance(state.cardAccount.getNumber());
+                        validOperations = null;
+                    }
                 }
                 catch (DataBaseException e)
                 {
@@ -338,7 +391,6 @@ public class TileCardStation extends TileTransactionMachine
                     {
                         state.primaryAccount = UniversalCoinsServer.cardDb.createPrimaryAccount(state.playerUID, state.playerName);
                         state.cardAccount = state.primaryAccount;
-
                     }
                     ItemStack stack = new ItemStack(UniversalCoinsServer.proxy.itemCard);
                     stack.stackTagCompound = new NBTTagCompound();
@@ -362,18 +414,80 @@ public class TileCardStation extends TileTransactionMachine
             case FUNCTION_DEPOSIT:
                 if(state.cardAccount == null)
                 {
-                    state.accountError = true;
+                    state.force(GUI_UNAUTHORIZED_ACCESS);
+                    validOperations = Collections.singletonList(FUNCTION_DESTROY_CARD);
                     scheduleUpdate();
                     return;
                 }
                 state.depositCoins = true;
                 state.withdrawCoins = false;
+                return;
+            case FUNCTION_WITHDRAW:
+                if(state.cardAccount == null || state.coinWithdrawalAmount <= 0)
+                {
+                    state.force(GUI_UNAUTHORIZED_ACCESS);
+                    validOperations = Collections.singletonList(FUNCTION_DESTROY_CARD);
+                    scheduleUpdate();
+                    return;
+                }
+
+                try
+                {
+                    state.accountBalance = UniversalCoinsServer.cardDb.getAccountBalance(state.cardAccount.getNumber());
+                    state.coinWithdrawalAmount = Math.min(state.accountBalance, state.coinWithdrawalAmount);
+                    int withdraw = state.coinWithdrawalAmount;
+                    if(withdraw <= 0)
+                    {
+                        state.accountError = true;
+                        return;
+                    }
+
+                    Transaction transaction = new Transaction(this,
+                            Transaction.Operation.WITHDRAW_FROM_ACCOUNT_TO_MACHINE,
+                            new PlayerOperator(opener),
+                            new Transaction.MachineCoinSource(this, coins, withdraw),
+                            createCardCoinSource(-withdraw),
+                            null
+                    );
+
+                    state.accountBalance = UniversalCoinsServer.cardDb.takeFromAccount(state.cardAccount.getNumber(), withdraw, transaction);
+                    coins += withdraw;
+
+                    state.withdrawCoins = true;
+                    fillCoinSlot();
+                }
+                catch (DataBaseException e)
+                {
+                    logger.error(e);
+                    state.accountError = true;
+                }
         }
+    }
+
+    public Transaction.CardCoinSource createCardCoinSource(int increment) throws DataBaseException
+    {
+        if(state.activeCard != null)
+            return new Transaction.CardCoinSource(state.activeCard, increment);
+        else
+            return new Transaction.CardCoinSource(state.cardAccount, increment);
     }
 
     public void fillCoinSlot()
     {
-
+        if(state.withdrawCoins && coins > 0)
+        {
+            int before = coins;
+            coins = UniversalCoinsServerAPI.addCoinsToSlot(this, coins, SLOT_COIN);
+            if(before != coins)
+            {
+                worldObj.playSoundEffect(xCoord, yCoord, zCoord,
+                        inventory[SLOT_COIN].stackSize > 1?
+                                "universalcoins:take_coins":
+                                "universalcoins:take_coin"
+                        , 1.0F, 1.0F);
+            }
+            markDirty();
+        }
     }
 
     public void reset()
@@ -397,6 +511,8 @@ public class TileCardStation extends TileTransactionMachine
             if(stack != null)
                 setInventorySlotContents(SLOT_CARD, stack);
         }
+        else
+            state.stopForcing();
         scheduleUpdate();
     }
 
@@ -443,7 +559,8 @@ public class TileCardStation extends TileTransactionMachine
         tagCompound.setBoolean("InUse", opener != null);
         tagCompound.setBoolean("DepositCoins", state.depositCoins);
         tagCompound.setBoolean("WithdrawCoins", state.withdrawCoins);
-        tagCompound.setInteger("CoinWithdrawalAmount", coins);
+        tagCompound.setInteger("CoinWithdrawalAmount", state.coinWithdrawalAmount);
+        tagCompound.setInteger("coins", coins);
     }
 
     @Override
@@ -462,7 +579,8 @@ public class TileCardStation extends TileTransactionMachine
 
         state.depositCoins = compound.getBoolean("DepositCoins");
         state.withdrawCoins = compound.getBoolean("WithdrawCoins");
-        coins = compound.getInteger("CoinWithdrawalAmount");
+        state.coinWithdrawalAmount = compound.getInteger("CoinWithdrawalAmount");
+        coins = compound.getInteger("Coins");
         validateFields();
     }
 
@@ -508,6 +626,6 @@ public class TileCardStation extends TileTransactionMachine
     @Override
     public boolean isItemValidForSlot(int slot, ItemStack stack)
     {
-        return false;
+        return slot == SLOT_COIN && state.withdrawCoins && stack.getItem() instanceof ItemCoin;
     }
 }

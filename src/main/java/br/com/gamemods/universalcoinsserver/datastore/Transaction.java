@@ -88,7 +88,8 @@ public final class Transaction
                        MachineCoinSource machineCoinSource, CardCoinSource cardCoinSource,
                        ItemStack product)
     {
-        if(operation != Operation.DEPOSIT_TO_ACCOUNT_FROM_MACHINE)
+        if(operation != Operation.DEPOSIT_TO_ACCOUNT_FROM_MACHINE
+            && operation != Operation.WITHDRAW_FROM_ACCOUNT_TO_MACHINE)
             throw new IllegalArgumentException();
 
         this.operator = operator;
@@ -114,6 +115,15 @@ public final class Transaction
         private AccountAddress accountAddress;
         private int balanceBefore;
         private int balanceAfter;
+
+        public CardCoinSource(AccountAddress accountAddress, int increment) throws DataBaseException
+        {
+            if(accountAddress == null)
+                throw new NullPointerException("accountAddress");
+            this.accountAddress = accountAddress;
+            this.balanceBefore = UniversalCoinsServer.cardDb.getAccountBalance(accountAddress.getNumber());
+            this.balanceAfter = balanceBefore + increment;
+        }
 
         public CardCoinSource(ItemStack card, int increment) throws DataBaseException, NullPointerException
         {
@@ -255,7 +265,7 @@ public final class Transaction
         SELL_TO_MACHINE,
         DEPOSIT_TO_MACHINE,
         SLOTS_WIN_5_MATCH, SLOTS_WIN_4_MATCH, WITHDRAW_FROM_MACHINE,
-        DEPOSIT_TO_ACCOUNT_FROM_MACHINE
+        WITHDRAW_FROM_ACCOUNT_TO_MACHINE, DEPOSIT_TO_ACCOUNT_FROM_MACHINE
     }
 
     public UUID getId()

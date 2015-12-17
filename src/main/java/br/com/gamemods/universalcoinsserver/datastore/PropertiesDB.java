@@ -265,16 +265,65 @@ public class PropertiesDB implements CardDataBase
         return depositToAccount(account, Collections.singleton(coins), transaction);
     }
 
-    private int incrementInt(Properties properties, String key, int defaultValue)
+    private int incrementInt(Properties properties, String key, int increment, int defaultValue)
     {
         int current = Integer.parseInt(properties.getProperty(key, Integer.toString(defaultValue)));
-        properties.setProperty(key, Integer.toString(++current));
+        current += increment;
+        properties.setProperty(key, Integer.toString(current));
         return current;
+    }
+
+    private int incrementInt(Properties properties, String key, int defaultValue)
+    {
+        return incrementInt(properties, key, 1, defaultValue);
     }
 
     private File getAccountFile(String account)
     {
         return new File(accounts, account+".properties");
+    }
+
+    @Override
+    public int takeFromAccount(Object account, int amount, Transaction transaction)
+            throws DataBaseException
+    {
+        Properties properties = loadAccount(account.toString());
+        try
+        {
+            if(amount == 0)
+                return Integer.parseInt(properties.getProperty("balance", "0"));
+            else if(amount < 0)
+                throw new IllegalArgumentException("amount < 0: "+amount);
+
+            int newBalance = incrementInt(properties, "balance", -amount, 0);
+            if(newBalance < 0)
+                throw new OutOfCoinsException(-newBalance);
+            incrementInt(properties, "version", Integer.MIN_VALUE);
+
+            try(FileWriter writer = new FileWriter(getAccountFile(account.toString())))
+            {
+                properties.store(writer, "Took "+amount+" from balance");;
+            }
+
+            try
+            {
+                saveTransaction(transaction);
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+
+            return newBalance;
+        }
+        catch (DataBaseException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            throw new DataBaseException(e);
+        }
     }
 
     @Override
@@ -290,6 +339,11 @@ public class PropertiesDB implements CardDataBase
 
     private int deposit(Properties properties, String account, int value, Transaction transaction) throws DataBaseException
     {
+        if(value == 0)
+            return 0;
+        else if(value < 0)
+            throw new IllegalArgumentException("value < 0: "+value);
+
         try
         {
             int balance = Integer.parseInt(properties.getProperty("balance"));

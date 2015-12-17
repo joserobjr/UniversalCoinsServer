@@ -16,7 +16,7 @@ import java.util.UUID;
 public class TileCardStationMessage implements IMessage, IMessageHandler<TileCardStationMessage, IMessage>
 {
     public TileCardStation owner;
-    public int x, y, z, coinWithdrawalAmount, accountBalance, forcedMenuState, resetProgressBar, lockProgressBar;
+    public int x, y, z, coinWithdrawalAmount, accountBalance, forcedMenuState = -1, resetProgressBar, lockProgressBar = -1;
     public boolean inUse, depositCoins, withdrawCoins, accountError;
     public AccountAddress primaryAccount;
     public AccountAddress customAccount;
@@ -28,10 +28,9 @@ public class TileCardStationMessage implements IMessage, IMessageHandler<TileCar
     public void reset()
     {
         coinWithdrawalAmount = 0;
-        accountBalance = 0;
         inUse = false;
         depositCoins = false;
-        withdrawCoins = false;
+        withdrawCoins = true;
         accountError = false;
         playerName = "";
         playerUID = null;
@@ -168,5 +167,6 @@ public class TileCardStationMessage implements IMessage, IMessageHandler<TileCar
         forcedMenuState = -1;
         lockProgressBar  = -1;
         accountError = false;
+        owner.customButtonOperation = null;
     }
 }

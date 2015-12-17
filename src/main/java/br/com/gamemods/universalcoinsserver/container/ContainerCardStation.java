@@ -87,7 +87,7 @@ public class ContainerCardStation extends Container
             }
 
             slotObject.onPickupFromSlot(player, stackInSlot);
-            tile.fillCoinSlot();
+            //tile.fillCoinSlot();
         }
 
         return stack;
