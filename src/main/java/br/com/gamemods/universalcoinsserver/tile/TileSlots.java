@@ -56,20 +56,42 @@ public class TileSlots extends TileTransactionMachine
                 {
                     unlockInventory = true;
                     int before = userCoins;
-                    userCoins = UniversalCoinsServerAPI.addCoinsToSlot(this, userCoins, SLOT_COIN_OUTPUT);
+                    try
+                    {
+                        userCoins = UniversalCoinsServerAPI.addCoinsToSlot(this, userCoins, SLOT_COIN_OUTPUT);
+                    }
+                    finally
+                    {
+                        unlockInventory = false;
+                    }
+
                     if(before != userCoins)
                         worldObj.playSoundEffect(xCoord, yCoord, zCoord,
                                 inventory[SLOT_COIN_OUTPUT].stackSize > 1?
                                         "universalcoins:take_coins":
                                         "universalcoins:take_coin"
                                 , 1.0F, 1.0F);
+
+                    try
+                    {
+                        Transaction transaction = new Transaction(this, Transaction.Operation.WITHDRAW_FROM_MACHINE,
+                                new PlayerOperator(player),  new Transaction.MachineCoinSource(this, before, userCoins - before),
+                                inventory[SLOT_COIN_OUTPUT].copy()
+                        );
+
+                        UniversalCoinsServer.cardDb.saveTransaction(transaction);
+                    }
+                    catch (Exception e)
+                    {
+                        UniversalCoinsServer.logger.error(e);
+                    }
                 }
                 finally
                 {
-                    unlockInventory = false;
                     markDirty();
                 }
                 return;
+
             case BUTTON_SPIN:
                 spin(false);
                 return;
@@ -97,15 +119,36 @@ public class TileSlots extends TileTransactionMachine
                 if (reelStops[i] == reelPos[j])
                     matchCount++;
 
+            Transaction.Operation operation = null;
+            int before = userCoins;
             if (matchCount == 5)
             {
                 userCoins += fiveMatchPayout;
                 worldObj.playSound(xCoord, yCoord, zCoord, "universalcoins:winner", 1.0F, 1.0F, true);
+                operation = Transaction.Operation.SLOTS_WIN_5_MATCH;
             }
             if (matchCount == 4)
             {
                 userCoins += fourMatchPayout;
                 worldObj.playSound(xCoord, yCoord, zCoord, "universalcoins:winner", 1.0F, 1.0F, true);
+                operation = Transaction.Operation.SLOTS_WIN_4_MATCH;
+            }
+
+            if(userCoins != before)
+            {
+                Transaction transaction = new Transaction(this, operation,
+                        new PlayerOperator(opener),
+                        new Transaction.MachineCoinSource(this, before, userCoins-before),
+                        null);
+
+                try
+                {
+                    UniversalCoinsServer.cardDb.saveTransaction(transaction);
+                }
+                catch (Exception e)
+                {
+                    UniversalCoinsServer.logger.error(e);
+                }
             }
         }
 
@@ -157,6 +200,20 @@ public class TileSlots extends TileTransactionMachine
         }
         waitingCheck = true;
         markDirty();
+
+        Transaction transaction = new Transaction(this, Transaction.Operation.BUY_FROM_MACHINE,
+                new PlayerOperator(opener),
+                new Transaction.MachineCoinSource(this, userCoins+fee, -fee),
+                null);
+
+        try
+        {
+            UniversalCoinsServer.cardDb.saveTransaction(transaction);
+        }
+        catch (Exception e)
+        {
+            UniversalCoinsServer.logger.error(e);
+        }
     }
 
     @Override

@@ -2,6 +2,7 @@ package br.com.gamemods.universalcoinsserver.tile;
 
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.api.UniversalCoinsServerAPI;
+import br.com.gamemods.universalcoinsserver.datastore.*;
 import br.com.gamemods.universalcoinsserver.event.PlayerLookupEvent;
 import br.com.gamemods.universalcoinsserver.event.PlayerSendPackage;
 import br.com.gamemods.universalcoinsserver.item.ItemCoin;
@@ -79,6 +80,19 @@ public class TilePackager extends TileTransactionMachine
                 int depositAmount = Math.min(stack.stackSize, (Integer.MAX_VALUE - userCoins) / itemValue);
                 int depositValue = depositAmount * itemValue;
 
+                Operator operator = opener == null? new MachineOperator(this) : new PlayerOperator(opener);
+                Transaction transaction = new Transaction(this, Transaction.Operation.DEPOSIT_TO_MACHINE,
+                        operator, packageSize, new Transaction.MachineCoinSource(this, userCoins, depositValue),
+                        stack.copy());
+                try
+                {
+                    UniversalCoinsServer.cardDb.saveTransaction(transaction);
+                }
+                catch (DataBaseException e)
+                {
+                    UniversalCoinsServer.logger.error(e);
+                }
+
                 userCoins += depositValue;
                 worldObj.playSoundEffect(xCoord, yCoord, zCoord, "universalcoins:insert_coin", 1f, 1f);
 
@@ -104,16 +118,13 @@ public class TilePackager extends TileTransactionMachine
             case BUTTON_WITHDRAW:
             {
                 int before = userCoins;
+                if(before <= 0)
+                    return;
+
                 try
                 {
                     outputUnlocked = true;
                     userCoins = UniversalCoinsServerAPI.addCoinsToSlot(this, userCoins, SLOT_OUTPUT);
-
-                    worldObj.playSoundEffect(xCoord, yCoord, zCoord,
-                            before-userCoins > 1?
-                                    "universalcoins:take_coins":
-                                    "universalcoins:take_coin"
-                            , 1.0F, 1.0F);
                 }
                 finally
                 {
@@ -122,7 +133,28 @@ public class TilePackager extends TileTransactionMachine
                 if (before == userCoins)
                     return;
 
+                worldObj.playSoundEffect(xCoord, yCoord, zCoord,
+                        before - userCoins > 1 ?
+                                "universalcoins:take_coins" :
+                                "universalcoins:take_coin"
+                        , 1.0F, 1.0F);
+
                 markDirty();
+
+                try
+                {
+                    Transaction transaction = new Transaction(this, Transaction.Operation.WITHDRAW_FROM_MACHINE,
+                            new PlayerOperator(player), packageSize, new Transaction.MachineCoinSource(this, before, userCoins - before),
+                            inventory[SLOT_OUTPUT].copy()
+                    );
+
+                    UniversalCoinsServer.cardDb.saveTransaction(transaction);
+                }
+                catch (Exception e)
+                {
+                    UniversalCoinsServer.logger.error(e);
+                }
+
                 return;
             }
 
@@ -280,7 +312,6 @@ public class TilePackager extends TileTransactionMachine
             tag.setByte("Slot", (byte) slot);
             stack.writeToNBT(tag);
             itemList.appendTag(tag);
-            inventory[slot] = null;
         }
 
 
@@ -290,6 +321,23 @@ public class TilePackager extends TileTransactionMachine
             inventory[SLOT_OUTPUT] = stack;
             tagCompound.setTag("Inventory", itemList);
             stack.setTagCompound(tagCompound);
+
+            try
+            {
+                Transaction transaction = new Transaction(this, Transaction.Operation.BUY_FROM_MACHINE,
+                        new PlayerOperator(opener), packageSize, new Transaction.MachineCoinSource(this, userCoins, price[packageSize]),
+                        stack);
+
+                UniversalCoinsServer.cardDb.saveTransaction(transaction);
+            }
+            catch (DataBaseException e)
+            {
+                UniversalCoinsServer.logger.error(e);
+                return;
+            }
+
+            for (int slot = firstSlot; slot <= SLOT_PACKAGE_END; slot++)
+                inventory[slot] = null;
 
             userCoins -= price[packageSize];
             validateFields();

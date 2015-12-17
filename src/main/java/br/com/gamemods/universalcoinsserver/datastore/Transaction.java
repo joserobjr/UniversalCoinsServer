@@ -1,5 +1,6 @@
 package br.com.gamemods.universalcoinsserver.datastore;
 
+import br.com.gamemods.universalcoinsserver.tile.TilePackager;
 import br.com.gamemods.universalcoinsserver.tile.TileSignal;
 import br.com.gamemods.universalcoinsserver.tile.TileSlots;
 import br.com.gamemods.universalcoinsserver.tile.TileVendor;
@@ -41,7 +42,7 @@ public final class Transaction
     }
 
     public Transaction(TileSignal signal, Operation operation, int time, Operator operator,
-                       CoinSource userSource, CoinSource ownerSource)
+                       CoinSource userSource, CoinSource ownerSource, ItemStack product)
     {
         this.operation = operation;
         this.machine = signal;
@@ -51,6 +52,20 @@ public final class Transaction
         this.ownerCoinSource = ownerSource;
         this.price = signal.fee;
         this.totalPrice = signal.fee;
+        this.product = product;
+    }
+
+    public Transaction(TilePackager packager, Operation operation, Operator operator, int size,
+                       CoinSource userSource, ItemStack product)
+    {
+        this.operator = operator;
+        this.machine = packager;
+        this.operation = operation;
+        this.userCoinSource = userSource;
+        this.quantity = size;
+        this.price = packager.price[size];
+        this.totalPrice = price;
+        this.product = product;
     }
 
     public Transaction(TileSlots slots, Operation operation, Operator operator,
@@ -214,7 +229,7 @@ public final class Transaction
         BUY_FROM_MACHINE,
         SELL_TO_MACHINE,
         DEPOSIT_TO_MACHINE,
-        WITHDRAW_FROM_MACHINE
+        SLOTS_WIN_5_MATCH, SLOTS_WIN_4_MATCH, WITHDRAW_FROM_MACHINE
     }
 
     public UUID getId()

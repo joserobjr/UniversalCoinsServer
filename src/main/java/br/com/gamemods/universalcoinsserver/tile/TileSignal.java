@@ -106,7 +106,7 @@ public class TileSignal extends TileOwned
         Transaction transaction = new Transaction(this, Transaction.Operation.BUY_FROM_MACHINE, duration,
                 operator,
                 new Transaction.InventoryCoinSource(operator, scanResult.getCoins(), -fee),
-                new Transaction.MachineCoinSource(this, coins, fee));
+                new Transaction.MachineCoinSource(this, coins, fee), null);
 
         try
         {
@@ -191,7 +191,8 @@ public class TileSignal extends TileOwned
                     markDirty();
 
                     Transaction transaction = new Transaction(this, Transaction.Operation.WITHDRAW_FROM_MACHINE, duration,
-                            new PlayerOperator(player), null, new Transaction.MachineCoinSource(this, before, coins-before));
+                            new PlayerOperator(player), null, new Transaction.MachineCoinSource(this, before, coins-before),
+                            coinOutput.copy());
 
                     try
                     {
