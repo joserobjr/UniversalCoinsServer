@@ -34,8 +34,8 @@ public class TileSlots extends TileTransactionMachine
     private ItemStack[] inventory = new ItemStack[3];
     public int userCoins;
     public int fee = 1;
-    public int fourMatchPayout = 100;
-    public int fiveMatchPayout = 10000;
+    public int fourMatchPayout = UniversalCoinsServer.proxy.fourMatchPayout;
+    public int fiveMatchPayout = UniversalCoinsServer.proxy.fiveMatchPayout;
     public int[] reelPos = { 0, 0, 0, 0, 0 };
     public int[] fakeReel;
     private int[] reelStops = { 0, 22, 44, 66, 88, 110, 132, 154, 176, 198 };
@@ -290,8 +290,11 @@ public class TileSlots extends TileTransactionMachine
 
         userCoins = tagCompound.getInteger("coinSum");
         fee = tagCompound.getInteger("spinFee");
-        fourMatchPayout = tagCompound.getInteger("fourMatchPayout");
-        fiveMatchPayout = tagCompound.getInteger("fiveMatchPayout");
+        if(!UniversalCoinsServer.proxy.forcePayoutConfig)
+        {
+            fourMatchPayout = tagCompound.getInteger("fourMatchPayout");
+            fiveMatchPayout = tagCompound.getInteger("fiveMatchPayout");
+        }
         for(int i= 0; i < reelPos.length; i++)
             reelPos[i] = tagCompound.getInteger("reelPos"+i);
 

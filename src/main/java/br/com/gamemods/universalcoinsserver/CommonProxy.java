@@ -50,6 +50,7 @@ public class CommonProxy
     public ItemCoin[] coins;
     ConfigLoader configs;
     public int fourMatchPayout = 100, fiveMatchPayout = 10000;
+    public boolean forcePayoutConfig, forcePackagePriceConfig;
     public int smallPackagePrice = 10, medPackagePrice= 20, largePackagePrice = 40;
 
     class ConfigLoader
@@ -200,6 +201,10 @@ public class CommonProxy
             prop.comment = "Set payout of slot machine when five of a kind is spun. Default: 10000";
             fiveMatchPayout = Math.max(0, prop.getInt(10000));
 
+            prop = source.get(category, "Force payout config", false);
+            prop.comment = "Set to true to force this configuration on all slot machines and disable per block configuration. Default: false";
+            forcePayoutConfig = prop.getBoolean(false);
+
             // packager
             prop = this.source.get("Packager", "Small Package Price", 10);
             prop.comment = "Set the price of small package";
@@ -212,6 +217,10 @@ public class CommonProxy
             prop = this.source.get("Packager", "Large Package Price", 40);
             prop.comment = "Set the price of large package";
             largePackagePrice = Math.max(1, prop.getInt(40));
+
+            prop = source.get(category, "Force prices config", false);
+            prop.comment = "Set to true to force this configuration on all packager machines and disable per block configuration. Default: false";
+            forcePackagePriceConfig = prop.getBoolean(false);
 
             this.source.save();
         }

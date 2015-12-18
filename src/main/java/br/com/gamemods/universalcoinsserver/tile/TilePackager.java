@@ -46,7 +46,11 @@ public class TilePackager extends TileTransactionMachine
     private ItemStack[] inventory = new ItemStack[12];
     public int userCoins;
     public int packageSize;
-    public int[] price = { 10, 20, 40 };
+    public int[] price = {
+            UniversalCoinsServer.proxy.smallPackagePrice,
+            UniversalCoinsServer.proxy.medPackagePrice,
+            UniversalCoinsServer.proxy.largePackagePrice
+    };
     private boolean outputUnlocked;
     private String targetName = "";
     public UUID targetId;
@@ -501,9 +505,12 @@ public class TilePackager extends TileTransactionMachine
 
         userCoins = tagCompound.getInteger("coinSum");
         packageSize = tagCompound.getInteger("packageSize");
-        price[0] = tagCompound.getInteger("smallPrice");
-        price[1] = tagCompound.getInteger("medPrice");
-        price[2] = tagCompound.getInteger("largePrice");
+        if(!UniversalCoinsServer.proxy.forcePackagePriceConfig)
+        {
+            price[0] = tagCompound.getInteger("smallPrice");
+            price[1] = tagCompound.getInteger("medPrice");
+            price[2] = tagCompound.getInteger("largePrice");
+        }
         targetName = tagCompound.getString("packageTarget");
         String str = tagCompound.getString("packageTargetId");
         if(str.isEmpty())
