@@ -34,8 +34,8 @@ public class UniversalCoinsServer
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) throws IOException
     {
-        proxy.config = new Configuration(event.getSuggestedConfigurationFile());
-        proxy.loadConfig();
+        proxy.configs = proxy.new ConfigLoader(new Configuration(event.getSuggestedConfigurationFile()));
+        proxy.configs.load();
         logger = event.getModLog();
 
         network = NetworkRegistry.INSTANCE.newSimpleChannel("universalcoins");

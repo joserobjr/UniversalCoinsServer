@@ -15,7 +15,12 @@ import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.config.Configuration;
+import net.minecraftforge.common.config.Property;
 import net.minecraftforge.oredict.RecipeSorter;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 public class CommonProxy
 {
@@ -27,8 +32,6 @@ public class CommonProxy
             Blocks.crafting_table, Blocks.gravel, Blocks.jukebox, Blocks.sandstone, Items.gold_ingot, Items.iron_ingot,
             Blocks.brick_block, Blocks.mossy_cobblestone, Blocks.obsidian, Items.diamond, Items.emerald,
             Blocks.lapis_block, };
-
-    public Configuration config;
 
     public Block blockTradeStation, blockVendor, blockVendorFrame, blockCardStation, blockBase, blockSafe,
             blockStandingAdvSign, blockWallAdvSign, blockSlots, blockSignal, blockPackager, blockPowerBase, blockPowerReceiver;
@@ -45,11 +48,173 @@ public class CommonProxy
         }
     };
     public ItemCoin[] coins;
+    ConfigLoader configs;
+    public int fourMatchPayout = 100, fiveMatchPayout = 10000;
+    public int smallPackagePrice = 10, medPackagePrice= 20, largePackagePrice = 40;
 
-    public void loadConfig()
+    class ConfigLoader
     {
-        config.load();
-        config.save();
+        Configuration source;
+        boolean recipeTradeStation, recipeVendor, recipeVendorFrame,
+        recipeCardMachine, recipeSlots, recipeLinkCard, recipeSignal,
+        recipePackager, recipeEnderCard, recipeAdvSign, recipeBase,
+        recipeSafe, recipePowerBase, recipePowerReceiver, recipeSeller;
+        boolean signAnyMaterial, vendorFrameAnyMaterial, changeSignMaterial, changeVendorFrameMaterial;
+        Set<String> signNonWoodMaterials, signNonWoodDictionaries,
+            vendorFrameNonWoodMaterials, vendorFrameNonWoodDictionaries;
+
+        ConfigLoader(Configuration source){ this.source = source; }
+
+        void load()
+        {
+            source.load();
+
+            // Recipes
+            String category = "Recipes";
+            Property prop = source.get(category, "Trade Station Recipes", true);
+            prop.comment = "Set to false to disable crafting recipes for trade station.";
+            recipeTradeStation = prop.getBoolean(true);
+
+            prop = source.get(category, "Seller Recipes", true);
+            prop.comment = "Set to false to disable crafting recipes for selling catalog.";
+            recipeSeller = prop.getBoolean(true);
+
+            prop = source.get(category, "Vending Block Recipes", true);
+            prop.comment = "Set to false to disable crafting recipes for vending blocks.";
+            recipeVendor = prop.getBoolean(true);
+
+            prop = source.get(category, "Vending Frame Recipe", true);
+            prop.comment = "Set to false to disable crafting recipes for Vending Frame.";
+            recipeVendorFrame = prop.getBoolean(true);
+
+            prop = source.get(category, "ATM Recipe", true);
+            prop.comment = "Set to false to disable crafting recipes for ATM.";
+            recipeCardMachine = prop.getBoolean(true);
+
+            prop = source.get(category, "Ender Card Recipe", true);
+            prop.comment = "Set to false to disable crafting recipes for Ender Card.";
+            recipeEnderCard = prop.getBoolean(true);
+
+            prop = source.get(category, "Slot Machine Recipe", true);
+            prop.comment = "Set to false to disable crafting recipes for Slot Machine.";
+            recipeSlots = prop.getBoolean(true);
+
+            prop = source.get(category, "Redstone Signal Generator Recipe", true);
+            prop.comment = "Set to false to disable crafting recipes for Redstone Signal Generator.";
+            recipeSignal = prop.getBoolean(true);
+
+            prop = source.get(category, "Remote Storage Linking Card Recipe", true);
+            prop.comment = "Set to false to disable crafting recipes for Linking Card.";
+            recipeLinkCard = prop.getBoolean(true);
+
+            prop = source.get(category, "Packager Recipe", true);
+            prop.comment = "Set to false to disable crafting recipes for Packager.";
+            recipePackager = prop.getBoolean(true);
+
+            prop = source.get(category, "Advanced Sign Recipe", true);
+            prop.comment = "Set to false to disable crafting recipes for Advanced Sign.";
+            recipeAdvSign = prop.getBoolean(true);
+
+            prop = source.get(category, "Block Base Recipe", true);
+            prop.comment = "Set to false to disable crafting recipes for Block Base.";
+            recipeBase = prop.getBoolean(true);
+
+            prop = source.get(category, "Block Safe Recipe", true);
+            prop.comment = "Set to false to disable crafting recipe for Block Safe.";
+            recipeSafe = prop.getBoolean(true);
+
+            // advanced sign materials
+            category = "Advanced Sign Materials";
+            prop = source.get(category, "Allow Material Changing", true);
+            prop.comment = "Set to true to enable recipes for changing the advanced sign material. Default: true";
+            changeSignMaterial = prop.getBoolean(true);
+
+            prop = source.get(category, "Accept Anything", false);
+            prop.comment = "Set to true to allow advanced signs to be created with any material. Default: false";
+            signAnyMaterial = prop.getBoolean(false);
+
+            prop = source.get(category, "Accepted Materials", new String[0]);
+            prop.comment = "List of allowed materials for advanced signs.\n" +
+                    "This will allow signs to be crafted with different blocks to have different texture.\n" +
+                    "Example: minecraft:redstone_block to allow creation of redstone advanced signs\n" +
+                    "Default: empty";
+            String[] stringList = prop.getStringList();
+            signNonWoodMaterials = stringList==null||stringList.length==0?null:new HashSet<>(Arrays.asList(stringList));
+
+            prop = source.get(category, "Accepted Dictionary Materials", new String[0]);
+            prop.comment = "List of allowed ore dictionary entries for advanced signs.\n" +
+                    "This will allow signs to be crafted with different blocks to have different texture.\n" +
+                    "Example: blockCopper to allow creation of advanced signs using any type of copper block\n" +
+                    "Default: empty";
+            stringList = prop.getStringList();
+            signNonWoodDictionaries = stringList==null||stringList.length==0?null:new HashSet<>(Arrays.asList(stringList));
+
+            // vendor frame materials
+            category = "Vendor Frame Materials";
+            prop = source.get(category, "Allow Material Changing", true);
+            prop.comment = "Set to true to enable recipes for changing the vendor frame material. Default: true";
+            changeVendorFrameMaterial = prop.getBoolean(true);
+
+            prop = source.get(category, "Accept Anything", false);
+            prop.comment = "Set to true to allow vendor frames to be created with any material. Default: false";
+            vendorFrameAnyMaterial = prop.getBoolean(false);
+
+            prop = source.get(category, "Accepted Materials", new String[0]);
+            prop.comment = "List of allowed materials for vendor frames.\n" +
+                    "This will allow vendor frames to be crafted with different blocks to have different texture.\n" +
+                    "Example: minecraft:redstone_block to allow creation of redstone vendor frames\n" +
+                    "Default: empty";
+            stringList = prop.getStringList();
+            vendorFrameNonWoodMaterials = stringList==null||stringList.length==0?null:new HashSet<>(Arrays.asList(stringList));
+
+            prop = source.get(category, "Accepted Dictionary Materials", new String[0]);
+            prop.comment = "List of allowed ore dictionary entries for vendor frames.\n" +
+                    "This will allow vendor frames to be crafted with different blocks to have different texture.\n" +
+                    "Example: blockCopper to allow creation of vendor frames using any type of copper block\n" +
+                    "Default: empty";
+            stringList = prop.getStringList();
+            vendorFrameNonWoodDictionaries = stringList==null||stringList.length==0?null:new HashSet<>(Arrays.asList(stringList));
+
+            // rf utility (power company stuff)
+            prop = source.get("RF Utility", "Power Base enabled", true);
+            prop.comment = "Set to false to disable the power base block.";
+            recipePowerBase = prop.getBoolean(true);
+
+            prop = source.get("RF Utility", "RF Blocks enabled", true);
+            prop.comment = "Set to false to disable the power receiver block.";
+            recipePowerReceiver = prop.getBoolean(true);
+
+            prop = source.get("RF Utility", "Wholesale rate", 12);
+            prop.comment = "Set payment per 10 kRF of power sold. Default: 12";
+
+            prop = source.get("RF Utility", "Retail rate", 15);
+            prop.comment = "Set payment per 10 kRF of power bought. Default: 15";
+
+            // slot machine
+            category = "Slot Machine";
+            prop = this.source.get(category, "Four of a kind payout", 100);
+            prop.comment = "Set payout of slot machine when four of a kind is spun. Default: 100";
+            fourMatchPayout = Math.max(0, prop.getInt(100));
+
+            prop = this.source.get(category, "Five of a kind payout", 10000);
+            prop.comment = "Set payout of slot machine when five of a kind is spun. Default: 10000";
+            fiveMatchPayout = Math.max(0, prop.getInt(10000));
+
+            // packager
+            prop = this.source.get("Packager", "Small Package Price", 10);
+            prop.comment = "Set the price of small package";
+            smallPackagePrice = Math.max(1, prop.getInt(10));
+
+            prop = this.source.get("Packager", "Medium Package Price", 20);
+            prop.comment = "Set the price of medium package";
+            medPackagePrice = Math.max(1, prop.getInt(20));
+
+            prop = this.source.get("Packager", "Large Package Price", 40);
+            prop.comment = "Set the price of large package";
+            largePackagePrice = Math.max(1, prop.getInt(40));
+
+            this.source.save();
+        }
     }
 
     public void registerBlocks()
@@ -139,117 +304,146 @@ public class CommonProxy
         GameRegistry.addShapelessRecipe(smallBag, largeStack, largeStack, largeStack, largeStack, largeStack, largeStack, largeStack, largeStack, largeStack );
         GameRegistry.addShapelessRecipe(largeBag, smallBag, smallBag, smallBag, smallBag, smallBag, smallBag, smallBag, smallBag, smallBag );
 
-        GameRegistry.addShapedRecipe(seller,
-                "LGE",
-                "PPP",
-                'L', Items.leather,
-                'G', Items.gold_ingot,
-                'E', Items.ender_pearl,
-                'P', Items.paper
-        );
-
-        GameRegistry.addShapedRecipe(new ItemStack(blockTradeStation),
-                "IGI",
-                "ICI",
-                "III",
-                'I', Items.iron_ingot,
-                'G', Items.gold_ingot,
-                'C', itemSeller
-        );
-
-        for (int i = 0; i < supports.length; i++)
-            GameRegistry.addShapedRecipe(new ItemStack(blockVendor, 1, i),
-                    "XXX",
-                    "XRX",
-                    "*G*",
-                    'X', Blocks.glass,
+        if(configs.recipeSeller)
+            GameRegistry.addShapedRecipe(seller,
+                    "LGE",
+                    "PPP",
+                    'L', Items.leather,
                     'G', Items.gold_ingot,
-                    'R', Items.redstone,
-                    '*', reagents[i]
+                    'E', Items.ender_pearl,
+                    'P', Items.paper
             );
 
-        GameRegistry.addRecipe(new RecipeVendingFrame());
-        RecipeSorter.register("universalcoins:vendingframe", RecipeVendingFrame.class, RecipeSorter.Category.SHAPED, "after:minecraft:shaped");
+        if(configs.recipeTradeStation)
+            GameRegistry.addShapedRecipe(new ItemStack(blockTradeStation),
+                    "IGI",
+                    "ICI",
+                    "III",
+                    'I', Items.iron_ingot,
+                    'G', Items.gold_ingot,
+                    'C', itemSeller
+            );
 
-        GameRegistry.addShapelessRecipe(new ItemStack(itemAdvSign), new ItemStack(Items.sign));
+        if(configs.recipeVendor)
+            for (int i = 0; i < supports.length; i++)
+                GameRegistry.addShapedRecipe(new ItemStack(blockVendor, 1, i),
+                        "XXX",
+                        "XRX",
+                        "*G*",
+                        'X', Blocks.glass,
+                        'G', Items.gold_ingot,
+                        'R', Items.redstone,
+                        '*', reagents[i]
+                );
+
+        if(configs.recipeVendorFrame)
+        {
+            GameRegistry.addRecipe(new RecipeVendingFrame());
+            RecipeSorter.register("universalcoins:vendingframe", RecipeVendingFrame.class, RecipeSorter.Category.SHAPED, "after:minecraft:shaped");
+        }
+
+        if(configs.recipeAdvSign)
+            GameRegistry.addShapelessRecipe(new ItemStack(itemAdvSign), new ItemStack(Items.sign));
+
         GameRegistry.addShapelessRecipe(new ItemStack(Items.sign), new ItemStack(itemAdvSign));
 
-        GameRegistry.addShapedRecipe(new ItemStack(blockCardStation),
-                "III",
-                "ICI",
-                "III",
-                'I', Items.iron_ingot,
-                'C', itemSmallCoinBag
-        );
-        GameRegistry.addShapedRecipe(new ItemStack(blockBase),
-                "III",
-                "ICI",
-                "III",
-                'I', Items.iron_ingot,
-                'C', itemCoin
-        );
+        if(configs.recipeCardMachine)
+            GameRegistry.addShapedRecipe(new ItemStack(blockCardStation),
+                    "III",
+                    "ICI",
+                    "III",
+                    'I', Items.iron_ingot,
+                    'C', itemSmallCoinBag
+            );
 
-        GameRegistry.addShapedRecipe(new ItemStack(blockSafe),
-                "III",
-                "IEI",
-                "III",
-                'I', Items.iron_ingot,
-                'E', itemEnderCard
-        );
+        if(configs.recipeBase)
+            GameRegistry.addShapedRecipe(new ItemStack(blockBase),
+                    "III",
+                    "ICI",
+                    "III",
+                    'I', Items.iron_ingot,
+                    'C', itemCoin
+            );
 
-        GameRegistry.addRecipe(new RecipeEnderCard());
-        RecipeSorter.register("universalcoins:endercard", RecipeEnderCard.class, RecipeSorter.Category.SHAPED, "after:minecraft:shaped");
+        if(configs.recipeSafe)
+            GameRegistry.addShapedRecipe(new ItemStack(blockSafe),
+                    "III",
+                    "IEI",
+                    "III",
+                    'I', Items.iron_ingot,
+                    'E', itemEnderCard
+            );
 
-        GameRegistry.addShapedRecipe(new ItemStack(blockSlots),
-                "IGI",
-                "IRI",
-                "III",
-                'I', Items.iron_ingot,
-                'R', Items.redstone,
-                'G', Items.gold_ingot
-        );
+        if(configs.recipeEnderCard)
+        {
+            GameRegistry.addRecipe(new RecipeEnderCard());
+            RecipeSorter.register("universalcoins:endercard", RecipeEnderCard.class, RecipeSorter.Category.SHAPED, "after:minecraft:shaped");
+        }
 
-        GameRegistry.addShapedRecipe(new ItemStack(blockSignal),
-                "IXI",
-                "XRX",
-                "IXI",
-                'I',
-                Items.iron_ingot,
-                'R',
-                Items.redstone
-        );
+        if(configs.recipeSlots)
+            GameRegistry.addShapedRecipe(new ItemStack(blockSlots),
+                    "IGI",
+                    "IRI",
+                    "III",
+                    'I', Items.iron_ingot,
+                    'R', Items.redstone,
+                    'G', Items.gold_ingot
+            );
 
-        GameRegistry.addShapelessRecipe(new ItemStack(itemLinkCard), Items.paper, Items.paper, Items.ender_pearl);
+        if(configs.recipeSignal)
+            GameRegistry.addShapedRecipe(new ItemStack(blockSignal),
+                    "IXI",
+                    "XRX",
+                    "IXI",
+                    'I',
+                    Items.iron_ingot,
+                    'R',
+                    Items.redstone
+            );
 
-        GameRegistry.addShapedRecipe(new ItemStack(blockPackager),
-                "IPI",
-                "SRS",
-                "IRI",
-                'I', Items.iron_ingot,
-                'R', Items.redstone,
-                'S', Items.string,
-                'P', Items.paper
-        );
+        if(configs.recipeLinkCard)
+            GameRegistry.addShapelessRecipe(new ItemStack(itemLinkCard), Items.paper, Items.paper, Items.ender_pearl);
 
-        GameRegistry.addRecipe(new RecipePlankTextureChange());
-        RecipeSorter.register("universalcoins:plankchange", RecipePlankTextureChange.class, RecipeSorter.Category.SHAPELESS, "after:minecraft:shapeless");
+        if(configs.recipePackager)
+            GameRegistry.addShapedRecipe(new ItemStack(blockPackager),
+                    "IPI",
+                    "SRS",
+                    "IRI",
+                    'I', Items.iron_ingot,
+                    'R', Items.redstone,
+                    'S', Items.string,
+                    'P', Items.paper
+            );
 
-        GameRegistry.addShapedRecipe(new ItemStack(blockPowerBase),
-                "III",
-                "MRM",
-                "III",
-                'I', Items.iron_ingot,
-                'R', Blocks.redstone_block,
-                'M', Items.redstone
-        );
+        if(configs.changeSignMaterial)
+            GameRegistry.addRecipe(new RecipePlankTextureChange(configs.signAnyMaterial, true, false, configs.signNonWoodMaterials, configs.signNonWoodDictionaries));
 
-        GameRegistry.addShapedRecipe(new ItemStack(blockPowerReceiver),
-                "III",
-                "MRM",
-                "III",
-                'I', Items.iron_ingot,
-                'R', Blocks.redstone_block,
-                'M', new ItemStack(Items.dye, 1, 4)
-        );
+        if(configs.changeVendorFrameMaterial)
+            GameRegistry.addRecipe(new RecipePlankTextureChange(configs.vendorFrameAnyMaterial, false, true, configs.vendorFrameNonWoodMaterials, configs.vendorFrameNonWoodDictionaries));
+
+        if(configs.changeSignMaterial || configs.changeVendorFrameMaterial)
+            RecipeSorter.register("universalcoins:plankchange", RecipePlankTextureChange.class, RecipeSorter.Category.SHAPELESS, "after:minecraft:shapeless");
+
+        if(configs.recipePowerBase)
+            GameRegistry.addShapedRecipe(new ItemStack(blockPowerBase),
+                    "III",
+                    "MRM",
+                    "III",
+                    'I', Items.iron_ingot,
+                    'R', Blocks.redstone_block,
+                    'M', Items.redstone
+            );
+
+        if(configs.recipePowerReceiver)
+            GameRegistry.addShapedRecipe(new ItemStack(blockPowerReceiver),
+                    "III",
+                    "MRM",
+                    "III",
+                    'I', Items.iron_ingot,
+                    'R', Blocks.redstone_block,
+                    'M', new ItemStack(Items.dye, 1, 4)
+            );
+
+        configs = null;
     }
 }
