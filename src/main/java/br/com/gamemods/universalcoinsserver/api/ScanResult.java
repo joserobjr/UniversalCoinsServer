@@ -3,10 +3,9 @@ package br.com.gamemods.universalcoinsserver.api;
 import net.minecraft.inventory.IInventory;
 
 import javax.annotation.Nonnull;
-import java.util.SortedMap;
-import java.util.SortedSet;
+import java.util.*;
 
-public class ScanResult
+public class ScanResult implements Iterable<Map.Entry<Integer, Integer>>
 {
     @Nonnull
     private final IInventory scannedInventory;
@@ -19,7 +18,7 @@ public class ScanResult
     {
         if(coins < 0) throw new IllegalArgumentException("coins < 0: "+coins);
         this.scannedInventory = scannedInventory;
-        this.distribution = distribution;
+        this.distribution = Collections.unmodifiableSortedMap(distribution);
         this.coins = coins;
         this.startIndex = 0;
         this.endIndex = scannedInventory.getSizeInventory();
@@ -28,10 +27,62 @@ public class ScanResult
     public ScanResult(@Nonnull IInventory scannedInventory, @Nonnull SortedMap<Integer, SortedMap<Integer, SortedSet<Integer>>> distribution, int coins, int startIndex, int endIndex)
     {
         this.scannedInventory = scannedInventory;
-        this.distribution = distribution;
+        this.distribution = Collections.unmodifiableSortedMap(distribution);
         this.coins = coins;
         this.startIndex = startIndex;
         this.endIndex = endIndex;
+    }
+
+    @Override
+    public Iterator<Map.Entry<Integer, Integer>> iterator()
+    {
+        final Iterator<Map.Entry<Integer, SortedMap<Integer, SortedSet<Integer>>>> coinTypeIter = distribution.entrySet().iterator();
+        return new Iterator<Map.Entry<Integer, Integer>>()
+        {
+            Iterator<Map.Entry<Integer, SortedSet<Integer>>> stackSizeIter;
+            Iterator<Integer> slotIter;
+            int itemValue, stackSize;
+
+            @Override
+            public boolean hasNext()
+            {
+                if(slotIter != null && slotIter.hasNext())
+                    return true;
+
+                do
+                {
+                    while (stackSizeIter != null && stackSizeIter.hasNext())
+                    {
+                        Map.Entry<Integer, SortedSet<Integer>> next = stackSizeIter.next();
+                        stackSize = next.getKey();
+                        slotIter = next.getValue().iterator();
+                        if (slotIter.hasNext())
+                            return true;
+                    }
+
+                    if (!coinTypeIter.hasNext())
+                        return false;
+
+                    Map.Entry<Integer, SortedMap<Integer, SortedSet<Integer>>> nextItem = coinTypeIter.next();
+                    itemValue = nextItem.getKey();
+                    stackSizeIter = nextItem.getValue().entrySet().iterator();
+                } while (true);
+            }
+
+            @Override
+            public Map.Entry<Integer, Integer> next()
+            {
+                if(!hasNext())
+                    throw new NoSuchElementException();
+                return new AbstractMap.SimpleImmutableEntry<>(slotIter.next(), stackSize*itemValue);
+            }
+
+            @Override
+            public void remove()
+            {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
     public int getCoins()

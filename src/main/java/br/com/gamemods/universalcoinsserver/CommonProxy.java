@@ -52,6 +52,8 @@ public class CommonProxy
     public int fourMatchPayout = 100, fiveMatchPayout = 10000;
     public boolean forcePayoutConfig, forcePackagePriceConfig;
     public int smallPackagePrice = 10, medPackagePrice= 20, largePackagePrice = 40;
+    public boolean enderDepositFromMachine, enderDepositFromTransaction, enderDepositFromInventory, enderCheckBalance;
+    public boolean cardCheckBalance, cardDepositFromTransaction;
 
     class ConfigLoader
     {
@@ -70,9 +72,37 @@ public class CommonProxy
         {
             source.load();
 
+            // Ender Card
+            String category = "Ender Card";
+            Property prop = source.get(category, "Deposit from Machines", true);
+            prop.comment = "Set to true to allow depositing to ender cards directly from any machine.";
+            enderDepositFromMachine = prop.getBoolean(true);
+
+            prop = source.get(category, "Deposit from Transactions", true);
+            prop.comment = "Set to true to allow ender cards to accept coins received from purchases on vendor blocks.";
+            enderDepositFromTransaction = prop.getBoolean(true);
+
+            prop = source.get(category, "Deposit from Inventory", true);
+            prop.comment = "Set to true to deposit all coins from the player inventory to the ender card on right click.";
+            enderDepositFromInventory = prop.getBoolean(true);
+
+            prop = source.get(category, "Check Balance", true);
+            prop.comment = "Set to true to show the account balance on right click";
+            enderCheckBalance = prop.getBoolean(true);
+
+            // Normal Card
+            category = "Normal Card";
+            prop = source.get(category, "Deposit from Transactions", false);
+            prop.comment = "Set to true to allow normal cards to accept coins received from purchases on vendor blocks.";
+            cardDepositFromTransaction = prop.getBoolean(false);
+
+            prop = source.get(category, "Check Balance", true);
+            prop.comment = "Set to true to show the account balance on right click";
+            cardCheckBalance = prop.getBoolean(true);
+
             // Recipes
-            String category = "Recipes";
-            Property prop = source.get(category, "Trade Station Recipes", true);
+            category = "Recipes";
+            prop = source.get(category, "Trade Station Recipes", true);
             prop.comment = "Set to false to disable crafting recipes for trade station.";
             recipeTradeStation = prop.getBoolean(true);
 

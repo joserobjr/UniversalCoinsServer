@@ -104,6 +104,17 @@ public final class Transaction
         this.product = product;
     }
 
+    public Transaction(PlayerOperator playerOperator, InventoryCoinSource inventoryCoinSource, CardCoinSource cardCoinSource, int amount)
+    {
+        operation = Operation.DEPOSIT_TO_ACCOUNT_FROM_CARD;
+        operator = playerOperator;
+        ownerCoinSource = cardCoinSource;
+        userCoinSource = inventoryCoinSource;
+        price = totalPrice = amount;
+        quantity = 1;
+        product = cardCoinSource.getCard();
+    }
+
     public static abstract class CoinSource
     {
         public abstract int getBalanceBefore();
@@ -274,7 +285,7 @@ public final class Transaction
         SELL_TO_MACHINE,
         DEPOSIT_TO_MACHINE,
         SLOTS_WIN_5_MATCH, SLOTS_WIN_4_MATCH, WITHDRAW_FROM_MACHINE,
-        WITHDRAW_FROM_ACCOUNT_TO_MACHINE, TRANSFER_ACCOUNT, DEPOSIT_TO_ACCOUNT_FROM_MACHINE
+        WITHDRAW_FROM_ACCOUNT_TO_MACHINE, TRANSFER_ACCOUNT, DEPOSIT_TO_ACCOUNT_FROM_CARD, DEPOSIT_TO_ACCOUNT_FROM_MACHINE
     }
 
     public UUID getId()
