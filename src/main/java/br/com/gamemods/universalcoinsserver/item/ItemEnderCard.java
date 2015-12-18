@@ -1,9 +1,8 @@
 package br.com.gamemods.universalcoinsserver.item;
 
 import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.item.Item;
 
-public class ItemEnderCard extends Item
+public class ItemEnderCard extends ItemCard
 {
     public ItemEnderCard(CreativeTabs tabs)
     {

@@ -17,6 +17,10 @@ public class ItemCard extends Item
         setUnlocalizedName("itemUCCard");
     }
 
+    public ItemCard()
+    {
+    }
+
     @Nullable
     public AccountAddress getAccountAddress(@Nullable ItemStack stack)
     {
