@@ -566,7 +566,53 @@ public class PropertiesDB implements CardDataBase
     }
 
     @Override
-    public int takeFromAccount(Object account, int amount, Transaction transaction)
+    public void processTrade(Transaction transaction) throws DataBaseException
+    {
+        Transaction.CoinSource ownerCoinSource = transaction.getOwnerCoinSource();
+        Transaction.CoinSource userCoinSource = transaction.getUserCoinSource();
+
+        if(ownerCoinSource instanceof Transaction.CardCoinSource)
+        {
+            int difference = ownerCoinSource.getBalanceAfter() - ownerCoinSource.getBalanceBefore();
+            if(difference < 0)
+                takeCoins(((Transaction.CardCoinSource) ownerCoinSource).getAccountAddress(), -difference);
+            else
+                deposit(((Transaction.CardCoinSource) ownerCoinSource).getAccountAddress(), difference);
+        }
+
+        if(userCoinSource instanceof Transaction.CardCoinSource)
+        {
+            int difference = userCoinSource.getBalanceAfter() - userCoinSource.getBalanceBefore();
+            if(difference < 0)
+                takeCoins(((Transaction.CardCoinSource) userCoinSource).getAccountAddress(), -difference);
+            else
+                deposit(((Transaction.CardCoinSource) userCoinSource).getAccountAddress(), difference);
+        }
+
+        saveTransaction(transaction);
+    }
+
+
+    @Override
+    public int takeFromAccount(Object account, int amount, Transaction transaction) throws DataBaseException
+    {
+        Object[] ret = takeCoins(account, amount);
+        if(ret[0] == true)
+        {
+            try
+            {
+                saveTransaction(transaction);
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
+
+        return (int) ret[1];
+    }
+
+    private Object[] takeCoins(Object account, int amount)
             throws DataBaseException
     {
         if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
@@ -574,7 +620,7 @@ public class PropertiesDB implements CardDataBase
         try
         {
             if(amount == 0)
-                return Integer.parseInt(properties.getProperty("balance", "0"));
+                return new Object[]{false,Integer.parseInt(properties.getProperty("balance", "0"))};
             else if(amount < 0)
                 throw new IllegalArgumentException("amount < 0: "+amount);
 
@@ -588,16 +634,7 @@ public class PropertiesDB implements CardDataBase
                 properties.store(writer, "Took "+amount+" from balance");;
             }
 
-            try
-            {
-                saveTransaction(transaction);
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-
-            return newBalance;
+            return new Object[]{true,newBalance};
         }
         catch (DataBaseException e)
         {
@@ -621,10 +658,33 @@ public class PropertiesDB implements CardDataBase
         return deposit(properties, account.toString(), value, transaction);
     }
 
+    private int deposit(Object account, int value) throws DataBaseException
+    {
+        if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
+        Properties properties = loadAccount(account.toString());
+        return (int) deposit(properties, account.toString(), value)[0];
+    }
+
     private int deposit(Properties properties, String account, int value, Transaction transaction) throws DataBaseException
     {
+        Object[] ret = deposit(properties, account, value);
+        if(ret[0] == true)
+            try
+            {
+                saveTransaction(transaction);
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+
+        return (int) ret[1];
+    }
+
+    private Object[] deposit(Properties properties, String account, int value) throws DataBaseException
+    {
         if(value == 0)
-            return 0;
+            return new Object[]{false, 0};
         else if(value < 0)
             throw new IllegalArgumentException("value < 0: "+value);
 
@@ -632,7 +692,7 @@ public class PropertiesDB implements CardDataBase
         {
             int balance = Integer.parseInt(properties.getProperty("balance"));
             if(canDeposit(balance, value) < 0)
-                return 0;
+                return new Object[]{false, 0};
 
             properties.setProperty("balance", Integer.toString(balance+value));
             incrementInt(properties, "version", Integer.MIN_VALUE);
@@ -642,15 +702,7 @@ public class PropertiesDB implements CardDataBase
                 properties.store(writer, "Balance increased by "+value);
             }
 
-            try
-            {
-                saveTransaction(transaction);
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-            return 0;
+            return new Object[]{true, 0};
         }
         catch (Exception e)
         {

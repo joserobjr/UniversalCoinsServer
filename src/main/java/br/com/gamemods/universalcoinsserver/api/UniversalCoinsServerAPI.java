@@ -5,6 +5,7 @@ import br.com.gamemods.universalcoinsserver.datastore.AccountAddress;
 import br.com.gamemods.universalcoinsserver.datastore.DataBaseException;
 import br.com.gamemods.universalcoinsserver.item.ItemCard;
 import br.com.gamemods.universalcoinsserver.item.ItemCoin;
+import br.com.gamemods.universalcoinsserver.item.ItemEnderCard;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
@@ -458,9 +459,17 @@ public class UniversalCoinsServerAPI
 
     public static boolean canCardBeUsedBy(ItemStack cardStack, EntityPlayer user)
     {
-        if (cardStack == null || user == null) return false;
+        if(user == null || cardStack == null)
+            return false;
+
+        return canCardBeUsedBy(cardStack, user.getPersistentID());
+    }
+
+    public static boolean canCardBeUsedBy(ItemStack cardStack, UUID userId)
+    {
+        if (cardStack == null || userId == null) return false;
         AccountAddress address = getAddress(cardStack);
-        return address != null && (address.getOwner().equals(user.getPersistentID()) || cardStack.stackTagCompound.getBoolean("Open"));
+        return address != null && (address.getOwner().equals(userId) || cardStack.stackTagCompound.getBoolean("Open"));
     }
 
     public static boolean isCardValid(ItemStack cardStack) throws DataBaseException
@@ -498,6 +507,41 @@ public class UniversalCoinsServerAPI
         {
             e.printStackTrace();
             return 0;
+        }
+    }
+
+    public static AccountAddress isCardValidForTransaction(ItemStack cardStack, EntityPlayer stackOwner, int transactionValue)
+    {
+        if(stackOwner == null || cardStack == null || transactionValue == 0) return null;
+        return isCardValidForTransaction(cardStack, stackOwner.getPersistentID(), transactionValue);
+    }
+
+    public static AccountAddress isCardValidForTransaction(ItemStack cardStack, UUID stackOwner, int transactionValue)
+    {
+        if(transactionValue == 0)
+            return null;
+
+        if(!canCardBeUsedBy(cardStack, stackOwner))
+            return null;
+
+        if(transactionValue < 0 && !(cardStack.getItem() instanceof ItemEnderCard))
+            return null;
+
+        if(transactionValue > 0)
+            return getCardBalanceSafely(cardStack) >= transactionValue?getAddress(cardStack):null;
+
+        try
+        {
+            AccountAddress address = getAddress(cardStack);
+            if(UniversalCoinsServer.cardDb.canDeposit(address, -transactionValue) > 0)
+                return address;
+            else
+                return null;
+        }
+        catch (DataBaseException e)
+        {
+            e.printStackTrace();
+            return null;
         }
     }
 }

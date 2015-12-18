@@ -411,11 +411,8 @@ public class TileSlots extends TileTransactionMachine
     public void updateCard()
     {
         ItemStack stack = inventory[SLOT_CARD];
-        Object before = card;
-        if(UniversalCoinsServerAPI.canCardBeUsedBy(stack, opener) && UniversalCoinsServerAPI.getCardBalanceSafely(stack) >= fee)
-            card = UniversalCoinsServerAPI.getAddress(stack);
-        else
-            card = null;
+        AccountAddress before = card;
+        card = UniversalCoinsServerAPI.isCardValidForTransaction(stack, opener, fee);
 
         if(!Objects.equals(before, card))
             scheduleUpdate();

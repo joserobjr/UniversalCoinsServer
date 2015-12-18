@@ -53,4 +53,6 @@ public interface CardDataBase
     AccountAddress transferAccount(AccountAddress origin, String destiny, Machine machine, Operator operator) throws DataBaseException;
 
     AccountAddress transferPrimaryAccount(AccountAddress primaryAccount, String newName, Machine machine, Operator operator) throws DataBaseException;
+
+    void processTrade(Transaction transaction) throws DataBaseException;
 }

@@ -73,10 +73,7 @@ public class TilePackager extends TileTransactionMachine
     {
         ItemStack stack = inventory[SLOT_CARD];
         Object before = card;
-        if(UniversalCoinsServerAPI.canCardBeUsedBy(stack, opener) && UniversalCoinsServerAPI.getCardBalanceSafely(stack) >= price[packageSize])
-            card = UniversalCoinsServerAPI.getAddress(stack);
-        else
-            card = null;
+        card = UniversalCoinsServerAPI.isCardValidForTransaction(stack, opener, price[packageSize]);
 
         if(!Objects.equals(before, card))
             scheduleUpdate();

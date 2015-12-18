@@ -22,10 +22,7 @@ import net.minecraft.util.*;
 import net.minecraftforge.common.util.Constants;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class TileVendor extends TileOwned
 {
@@ -62,6 +59,8 @@ public class TileVendor extends TileOwned
     private boolean[] buttonOwnerWithdraw = new boolean[5];
     private boolean[] buttonUserWithdraw = new boolean[5];
     private boolean outOfStock, outOfInventorySpace, buyButtonActive, sellButtonActive, outOfCoins;
+    private AccountAddress ownerCard;
+    private AccountAddress userCard;
 
     public void validateFields()
     {
@@ -70,7 +69,19 @@ public class TileVendor extends TileOwned
         if(price < 0) price = 0;
         updateWithdrawButtons(true);
         updateWithdrawButtons(false);
+        updateCards();
         updateOperations();
+    }
+
+    public void updateCards()
+    {
+        AccountAddress ownerBefore = ownerCard, userBefore = userCard;
+        int price = sellToUser? this.price : -this.price;
+        ownerCard = UniversalCoinsServerAPI.isCardValidForTransaction(inventory[SLOT_OWNER_CARD], owner, -price);
+        userCard = UniversalCoinsServerAPI.isCardValidForTransaction(inventory[SLOT_USER_CARD], opener, price);
+
+        if(!Objects.equals(ownerBefore, ownerCard) || !Objects.equals(userBefore, userCard))
+            markDirty();
     }
 
     @Override
@@ -264,6 +275,9 @@ public class TileVendor extends TileOwned
             }
         }
 
+        if(slot == SLOT_USER_CARD || slot == SLOT_OWNER_CARD)
+            updateCards();
+
         scheduleUpdate();
 
         return stack;
@@ -281,6 +295,14 @@ public class TileVendor extends TileOwned
     {
         inventory[slot] = stack;
         scheduleUpdate();
+
+        switch (slot)
+        {
+            case SLOT_OWNER_CARD:
+            case SLOT_USER_CARD:
+                updateCards();
+                return;
+        }
 
         if(stack == null)
             return;
@@ -729,6 +751,7 @@ public class TileVendor extends TileOwned
 
     public void sell(boolean all)
     {
+        updateCards();
         Transaction.Operation operation = Transaction.Operation.SELL_TO_MACHINE;
         Transaction.CoinSource userSource;
         Transaction.CoinSource ownerSource;
@@ -737,7 +760,7 @@ public class TileVendor extends TileOwned
         ItemStack input = inventory[SLOT_SELL];
         if(!UniversalCoinsServerAPI.matches(trade, input)
             || input.stackSize < trade.stackSize
-            || (!infinite && (ownerCoins < price || outOfInventorySpace)))
+            || (!infinite && ((ownerCard == null && ownerCoins < price) || outOfInventorySpace)))
         {
             sellButtonActive = false;
             scheduleUpdate();
@@ -773,12 +796,44 @@ public class TileVendor extends TileOwned
             }
         }
 
-        if(((long)userCoins) + ((long)price) > Integer.MAX_VALUE)
+        if(userCard == null && ((long)userCoins) + ((long)price) > Integer.MAX_VALUE)
         {
             sellButtonActive = false;
             scheduleUpdate();
             return;
         }
+
+        int ownerBalance;
+        int userBalance;
+        AccountAddress ownerCard = this.ownerCard;
+        AccountAddress userCard = this.userCard;
+        if(ownerCard != null)
+            try
+            {
+                ownerBalance = UniversalCoinsServer.cardDb.getAccountBalance(ownerCard);
+            }
+            catch (DataBaseException e)
+            {
+                e.printStackTrace();
+                ownerCard = null;
+                ownerBalance = ownerCoins;
+            }
+        else
+            ownerBalance = ownerCoins;
+
+        if(userCard != null)
+            try
+            {
+                userBalance = UniversalCoinsServer.cardDb.getAccountBalance(userCard);
+            }
+            catch (DataBaseException e)
+            {
+                e.printStackTrace();
+                userCard = null;
+                userBalance = userCoins;
+            }
+        else
+            userBalance = userCoins;
 
         int quantity = 1;
         if(all && trade.stackSize * 2 <= maxStackSize)
@@ -794,10 +849,10 @@ public class TileVendor extends TileOwned
             }
             else if(maxQuantity > 1)
             {
-                if(infinite || price * maxQuantity <= ownerCoins)
+                if(infinite || price * maxQuantity <= ownerBalance)
                     quantity = maxQuantity;
                 else
-                    quantity = ownerCoins / price;
+                    quantity = ownerBalance / price;
             }
 
             if(quantity <= 0)
@@ -806,14 +861,22 @@ public class TileVendor extends TileOwned
             {
                 for(; quantity>1; quantity--)
                 {
-                    if(((long)userCoins) + (((long)price)*quantity) <= Integer.MAX_VALUE)
+                    if(((long)userBalance) + (((long)price)*quantity) <= Integer.MAX_VALUE)
                         break;
                 }
             }
         }
 
-        userSource = new Transaction.MachineCoinSource(this, userCoins, price*quantity);
-        ownerSource = new Transaction.MachineCoinSource(this, ownerCoins, -(price*quantity));
+        try
+        {
+            userSource = userCard != null ? new Transaction.CardCoinSource(userCard, price * quantity) : new Transaction.MachineCoinSource(this, userCoins, price * quantity);
+            ownerSource = infinite ? null : ownerCard != null ? new Transaction.CardCoinSource(ownerCard, -(price * quantity)) : new Transaction.MachineCoinSource(this, ownerCoins, -(price * quantity));
+        }
+        catch (DataBaseException e)
+        {
+            e.printStackTrace();
+            return;
+        }
 
         ItemStack product = input.copy();
         product.stackSize = trade.stackSize * quantity;
@@ -821,7 +884,7 @@ public class TileVendor extends TileOwned
         Transaction transaction = new Transaction(this, operation, quantity, userSource, ownerSource, product);
         try
         {
-            UniversalCoinsServer.cardDb.saveTransaction(transaction);
+            UniversalCoinsServer.cardDb.processTrade(transaction);
         }
         catch (DataBaseException e)
         {
@@ -833,10 +896,13 @@ public class TileVendor extends TileOwned
         if(input.stackSize <= 0)
             inventory[SLOT_SELL] = null;
 
-        userCoins += price * quantity;
+        if(userCard == null)
+            userCoins += price * quantity;
+
         if(!infinite)
         {
-            ownerCoins -= price * quantity;
+            if(ownerCard == null)
+                ownerCoins -= price * quantity;
 
             storageSpace = product.stackSize;
             for(int space: spaces)
@@ -897,6 +963,8 @@ public class TileVendor extends TileOwned
 
     public void buy(boolean all)
     {
+        updateCards();
+
         Transaction.Operation operation = Transaction.Operation.BUY_FROM_MACHINE;
         Transaction.CoinSource userSource;
         Transaction.CoinSource ownerSource;
@@ -909,7 +977,7 @@ public class TileVendor extends TileOwned
             return;
         }
 
-        if(userCoins < price)
+        if(userCard == null && userCoins < price)
         {
             buyButtonActive = false;
             markDirty();
@@ -948,12 +1016,45 @@ public class TileVendor extends TileOwned
             }
         }
 
+        int ownerBalance;
+        int userBalance;
+        AccountAddress ownerCard = this.ownerCard;
+        AccountAddress userCard = this.userCard;
+        if(ownerCard != null)
+            try
+            {
+                ownerBalance = UniversalCoinsServer.cardDb.getAccountBalance(ownerCard);
+            }
+            catch (DataBaseException e)
+            {
+                e.printStackTrace();
+                ownerCard = null;
+                ownerBalance = ownerCoins;
+            }
+        else
+            ownerBalance = ownerCoins;
+
+        if(userCard != null)
+            try
+            {
+                userBalance = UniversalCoinsServer.cardDb.getAccountBalance(userCard);
+            }
+            catch (DataBaseException e)
+            {
+                e.printStackTrace();
+                userCard = null;
+                userBalance = userCoins;
+            }
+        else
+            userBalance = userCoins;
+
+
         int quantity = 1;
         if(all && trade.stackSize * 2 <= trade.getMaxStackSize())
         {
             if(output == null)
             {
-                if(trade.getMaxStackSize() * price / trade.stackSize <= userCoins)
+                if(trade.getMaxStackSize() * price / trade.stackSize <= userBalance)
                 {
                     // buy as many as will fit in a stack
                     quantity = trade.getMaxStackSize() / trade.stackSize;
@@ -961,12 +1062,12 @@ public class TileVendor extends TileOwned
                 else
                 {
                     // buy as many as i have coins for.
-                    quantity = userCoins / price;
+                    quantity = userBalance / price;
                 }
             }
             else
             {
-                if((output.getMaxStackSize() - output.stackSize) * price <= userCoins)
+                if((output.getMaxStackSize() - output.stackSize) * price <= userBalance)
                 {
                     // buy as much as i can fit in a stack since we have enough
                     // coins
@@ -975,7 +1076,7 @@ public class TileVendor extends TileOwned
                 else
                 {
                     // buy as many as possible with available coins.
-                    quantity = userCoins / price;
+                    quantity = userBalance / price;
                 }
             }
 
@@ -983,8 +1084,16 @@ public class TileVendor extends TileOwned
                 return;
         }
 
-        userSource = new Transaction.MachineCoinSource(this, userCoins, -(price*quantity));
-        ownerSource = new Transaction.MachineCoinSource(this, ownerCoins, price*quantity);
+        try
+        {
+            userSource = userCard != null? new Transaction.CardCoinSource(userCard, -(price*quantity)) : new Transaction.MachineCoinSource(this, userBalance, -(price*quantity));
+            ownerSource = infinite? null : ownerCard != null? new Transaction.CardCoinSource(ownerCard, price*quantity) : new Transaction.MachineCoinSource(this, ownerBalance, price*quantity);
+        }
+        catch (DataBaseException e)
+        {
+            e.printStackTrace();
+            return;
+        }
 
         ItemStack product;
         if(output != null)
@@ -1001,7 +1110,7 @@ public class TileVendor extends TileOwned
         Transaction transaction = new Transaction(this, operation, quantity, userSource, ownerSource, product);
         try
         {
-            UniversalCoinsServer.cardDb.saveTransaction(transaction);
+            UniversalCoinsServer.cardDb.processTrade(transaction);
         }
         catch (DataBaseException e)
         {
@@ -1038,15 +1147,17 @@ public class TileVendor extends TileOwned
         if(output != null)
         {
             output.stackSize += product.stackSize;
-            userCoins-= price * quantity;
-            if(!infinite)
+            if(userCard == null)
+                userCoins-= price * quantity;
+            if(!infinite && ownerCard == null)
                 ownerCoins += price * quantity;
         }
         else
         {
             inventory[SLOT_OUTPUT] = product;
-            userCoins -= price * quantity;
-            if(!infinite)
+            if(userCard == null)
+                userCoins -= price * quantity;
+            if(!infinite && ownerCard == null)
                 ownerCoins += price * quantity;
         }
 
@@ -1159,7 +1270,7 @@ public class TileVendor extends TileOwned
     {
         int hashcode = stateHashcode();
         ItemStack trade = inventory[SLOT_TRADE];
-        outOfCoins = !infinite && !sellToUser && ownerCoins < price;
+        outOfCoins = !infinite && !sellToUser && (ownerCard != null || ownerCoins < price);
         if(trade == null)
         {
             outOfStock = true;
@@ -1207,8 +1318,8 @@ public class TileVendor extends TileOwned
 
         ItemStack sellStack = inventory[SLOT_SELL];
         sellButtonActive = !sellToUser && !outOfInventorySpace && !outOfCoins && UniversalCoinsServerAPI.matches(trade, sellStack)
-                && sellStack.stackSize >= trade.stackSize && ((long)userCoins)+price <= Integer.MAX_VALUE;
-        buyButtonActive = sellToUser && !outOfStock && userCoins >= price && ((long)ownerCoins)+price <= Integer.MAX_VALUE;
+                && sellStack.stackSize >= trade.stackSize && (ownerCard != null || ((long)userCoins)+price <= Integer.MAX_VALUE);
+        buyButtonActive = sellToUser && !outOfStock && (userCard != null || userCoins >= price && ((long)ownerCoins)+price <= Integer.MAX_VALUE);
 
         if(buyButtonActive)
         {
@@ -1237,6 +1348,7 @@ public class TileVendor extends TileOwned
     public void onModeButtonPressed()
     {
         sellToUser = !sellToUser;
+        updateCards();
         markDirty();
     }
 
@@ -1244,6 +1356,7 @@ public class TileVendor extends TileOwned
     public void setOpener(EntityPlayer opener)
     {
         this.opener = opener;
+        updateCards();
         updateOperations();
     }
 }
