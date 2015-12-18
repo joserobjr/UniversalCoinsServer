@@ -498,10 +498,10 @@ public class TileVendor extends TileOwned
         else
             return false;
 
-        return depositToEnderCard(cardSlot, depositAmount, operator, TransactionType.DEPOSIT_FROM_MACHINE, null);
+        return depositToEnderCard(cardSlot, depositAmount, operator, null);
     }
 
-    private boolean depositToEnderCard(int cardSlot, int depositAmount, Operator operator, TransactionType transaction, String product)
+    private boolean depositToEnderCard(int cardSlot, int depositAmount, Operator operator, ItemStack product)
     {
         ItemStack stack = inventory[cardSlot];
         if(stack == null || !stack.hasTagCompound())
@@ -517,7 +517,23 @@ public class TileVendor extends TileOwned
 
         try
         {
-            return UniversalCoinsServer.cardDb.depositToAccount(account, depositAmount, operator, transaction, product);
+            if(UniversalCoinsServer.cardDb.canDeposit(account, depositAmount) < 0)
+                return false;
+
+            Transaction.CoinSource userSource = null;
+            if(operator instanceof PlayerOperator)
+            {
+                int balance =  UniversalCoinsServerAPI.scanCoins(opener.inventory).getCoins();
+                userSource = new Transaction.InventoryCoinSource(operator, balance+depositAmount, -depositAmount);
+            }
+
+            Transaction transaction = new Transaction(this, Transaction.Operation.DEPOSIT_TO_ACCOUNT_FROM_MACHINE,
+                    operator, userSource, new Transaction.CardCoinSource(stack, depositAmount), product);
+
+            UniversalCoinsServer.cardDb.depositToAccount(account, depositAmount, transaction);
+            //worldObj.playSoundEffect(xCoord, yCoord, zCoord, "universalcoins:insert_coin", 1f, 1f);
+            worldObj.playSoundEffect(xCoord, yCoord, zCoord, "mob.endermen.portal", 0.15f, 2f);
+            return true;
         } catch (DataBaseException e)
         {
             UniversalCoinsServer.logger.warn(e);

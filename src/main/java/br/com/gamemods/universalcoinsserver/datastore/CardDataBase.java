@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public interface CardDataBase
 {
-    UUID getAccountOwner(String account) throws DataBaseException;
+    UUID getAccountOwner(Object account) throws DataBaseException;
 
     int getAccountBalance(Object account) throws DataBaseException;
 
@@ -17,10 +17,6 @@ public interface CardDataBase
     int canDeposit(Object account, ItemStack coins) throws DataBaseException;
 
     int canDeposit(Object account, int coins) throws DataBaseException;
-
-    @Deprecated
-    boolean depositToAccount(String account, int depositAmount, Operator operator, TransactionType transaction, String product)
-            throws DataBaseException, IllegalArgumentException;
 
     /**
      *

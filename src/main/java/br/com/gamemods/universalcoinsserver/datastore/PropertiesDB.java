@@ -267,9 +267,9 @@ public class PropertiesDB implements CardDataBase
     }
 
     @Override
-    public UUID getAccountOwner(String account) throws DataBaseException
+    public UUID getAccountOwner(Object account) throws DataBaseException
     {
-        Properties properties = loadAccount(account);
+        Properties properties = loadAccount(account.toString());
         if (properties == null || properties.getProperty("removed", "false").equals("true"))
             return null;
         try
@@ -716,34 +716,6 @@ public class PropertiesDB implements CardDataBase
         if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
         Properties properties = loadAccount(account.toString());
         return deposit(properties, account.toString(), value, transaction);
-    }
-
-    @Override @Deprecated
-    public boolean depositToAccount(String account, int depositAmount, Operator operator, TransactionType transaction, String product) throws DataBaseException
-    {
-        Properties properties = loadAccount(account);
-        if(properties == null)
-            return false;
-
-        try
-        {
-            long balance = Integer.parseInt(properties.getProperty("balance"));
-            if(balance < 0)
-                return false;
-
-            balance += depositAmount;
-            if(balance > Integer.MAX_VALUE)
-                return false;
-
-            properties.put("balance", balance);
-        }
-        catch (Exception e)
-        {
-            throw new DataBaseException(e);
-        }
-
-        saveAccount(account, properties);
-        return true;
     }
 
     private File getMachineLogFile(Machine machine) throws IOException
