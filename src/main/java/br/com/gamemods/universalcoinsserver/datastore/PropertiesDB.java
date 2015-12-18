@@ -662,7 +662,7 @@ public class PropertiesDB implements CardDataBase
     {
         if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
         Properties properties = loadAccount(account.toString());
-        return (int) deposit(properties, account.toString(), value)[0];
+        return (int) deposit(properties, account.toString(), value)[1];
     }
 
     private int deposit(Properties properties, String account, int value, Transaction transaction) throws DataBaseException
