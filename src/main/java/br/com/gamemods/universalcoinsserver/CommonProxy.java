@@ -66,6 +66,11 @@ public class CommonProxy
         Set<String> signNonWoodMaterials, signNonWoodDictionaries,
             vendorFrameNonWoodMaterials, vendorFrameNonWoodDictionaries;
 
+        int mobDropMax, mobDropChance, enderDragonMultiplier, mineshaftCoinChance, dungeonCoinChance;
+        boolean coinsInMineshaft, coinsInDungeon, mobsDropCoins;
+
+        int chestCoin, chestMinStack, chestMaxStack;
+
         ConfigLoader(Configuration source){ this.source = source; }
 
         void load()
@@ -251,6 +256,52 @@ public class CommonProxy
             prop = source.get(category, "Force prices config", false);
             prop.comment = "Set to true to force this configuration on all packager machines and disable per block configuration. Default: false";
             forcePackagePriceConfig = prop.getBoolean(false);
+
+            // loot
+            category = "Loot";
+            prop = source.get(category, "Mob Drops", true);
+            prop.comment = "Set to false to disable mobs dropping coins on death.";
+            mobsDropCoins = prop.getBoolean(true);
+
+            prop = source.get(category, "Mob Drop Max", 39);
+            prop.comment = "Max mob drop stacksize. Minimum 1. Maximum 200. Default 39.";
+            mobDropMax = Math.max(1, Math.min(prop.getInt(39), 200));
+
+            prop = source.get(category, "Mob Drop Chance", 3);
+            prop.comment = "Chance of a mob dropping coins. Lower number means higher chance. Minimum 0 (always drop). Default 3 (1 in 4 chance).";
+            mobDropChance = Math.max(0, Math.min(prop.getInt(3), 100));
+
+            prop = source.get(category, "Ender Dragon Multiplier", 1000);
+            prop.comment = "Drop multiplier for ender dragon kills. Minimum 1. Default 1,000. Max 100,000";
+            enderDragonMultiplier = Math.max(1, Math.min(prop.getInt(1000), 100000));
+
+            prop = source.get(category, "Mineshaft Coins", true);
+            prop.comment = "Set to false to disable coins spawning in mineshaft chests.";
+            coinsInMineshaft = prop.getBoolean(true);
+
+            prop = source.get(category, "Mineshaft Coins Spawnrate", 20);
+            prop.comment = "Rate of coins spawning in mineshaft chests. Higher value equals more common. Default is 20.";
+            mineshaftCoinChance = Math.max(1, Math.min(prop.getInt(20), 100));
+
+            prop = source.get(category, "Dungeon Coins", true);
+            prop.comment = "Set to false to disable coins spawning in dungeon chests.";
+            coinsInDungeon = prop.getBoolean(true);
+
+            prop = source.get(category, "Dungeon Coins Spawnrate", 20);
+            prop.comment = "Rate of coins spawning in dungeon chests. Higher value equals more common. Default is 20.";
+            dungeonCoinChance = Math.max(1, Math.min(prop.getInt(20), 100));
+
+            prop = source.get(category, "Chest Coin Type", 2);
+            prop.comment = "Item spawned on chests. 1 = coins, 2 = small stack, 3 = large stack, 4 = small bag, 5 = large bag";
+            chestCoin = Math.max(1, Math.min(prop.getInt(2), 5));
+
+            prop = source.get(category, "Chest Coin Stack Minimum", 1);
+            prop.comment = "The minimum stack size spawned on the chest";
+            chestMinStack = Math.max(1, Math.min(prop.getInt(1), 64));
+
+            prop = source.get(category, "Chest Coin Stack Maximum", 2);
+            prop.comment = "The maximum stack size spawned on the chest";
+            chestMaxStack = Math.max(1, Math.min(prop.getInt(64), 64));
 
             this.source.save();
         }
@@ -483,6 +534,5 @@ public class CommonProxy
                     'M', new ItemStack(Items.dye, 1, 4)
             );
 
-        configs = null;
     }
 }

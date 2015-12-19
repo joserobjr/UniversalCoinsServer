@@ -11,6 +11,10 @@ import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.WeightedRandomChestContent;
+import net.minecraftforge.common.ChestGenHooks;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
 import org.apache.logging.log4j.Logger;
 
@@ -38,6 +42,9 @@ public class UniversalCoinsServer
         proxy.configs.load();
         logger = event.getModLog();
 
+        if(proxy.configs.mobsDropCoins)
+            MinecraftForge.EVENT_BUS.register(new MobDropEventHandler());
+
         network = NetworkRegistry.INSTANCE.newSimpleChannel("universalcoins");
         network.registerMessage(ButtonMessage.class, ButtonMessage.class, 0, Side.SERVER);
         network.registerMessage(VendorServerMessage.class, VendorServerMessage.class, 1, Side.SERVER);
@@ -62,5 +69,15 @@ public class UniversalCoinsServer
         proxy.registerTiles();
         proxy.registerGuis();
         proxy.registerRecipes();
+
+        if(proxy.configs.coinsInMineshaft)
+            ChestGenHooks.getInfo(ChestGenHooks.MINESHAFT_CORRIDOR).addItem(
+                    new WeightedRandomChestContent(new ItemStack(proxy.coins[proxy.configs.chestCoin]), proxy.configs.chestMinStack, proxy.configs.chestMaxStack, proxy.configs.mineshaftCoinChance));
+
+        if (proxy.configs.coinsInDungeon)
+            ChestGenHooks.getInfo(ChestGenHooks.DUNGEON_CHEST).addItem(
+                    new WeightedRandomChestContent(new ItemStack(proxy.coins[proxy.configs.chestCoin]), proxy.configs.chestMinStack, proxy.configs.chestMaxStack, proxy.configs.dungeonCoinChance));
+
+        proxy.configs = null;
     }
 }
