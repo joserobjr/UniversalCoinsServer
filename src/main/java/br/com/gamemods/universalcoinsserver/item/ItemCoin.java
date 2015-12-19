@@ -15,6 +15,7 @@ public class ItemCoin extends Item
         return value;
     }
 
+    @Deprecated
     public int getMaxStackSize()
     {
         return maxStackSize;

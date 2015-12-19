@@ -42,7 +42,7 @@ public class PropertiesDB implements CardDataBase
         return dir;
     }
 
-    private Properties loadProperties(File file) throws DataBaseException
+    private Properties loadProperties(File file) throws DataStoreException
     {
         if(!file.isFile())
             return null;
@@ -54,13 +54,13 @@ public class PropertiesDB implements CardDataBase
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
 
         return properties;
     }
 
-    private Properties loadPlayer(UUID playerId) throws DataBaseException
+    private Properties loadPlayer(UUID playerId) throws DataStoreException
     {
         if(playerId == null)
             throw new NullPointerException("playerId");
@@ -78,7 +78,7 @@ public class PropertiesDB implements CardDataBase
         return playerData;
     }
 
-    private Properties loadAccount(String account) throws DataBaseException
+    private Properties loadAccount(String account) throws DataStoreException
     {
         return loadProperties(new File(accounts, account+".properties"));
     }
@@ -98,7 +98,7 @@ public class PropertiesDB implements CardDataBase
 
     @Nonnull
     @Override
-    public PlayerData getPlayerData(@Nonnull UUID playerUID) throws DataBaseException
+    public PlayerData getPlayerData(@Nonnull UUID playerUID) throws DataStoreException
     {
         Properties properties = loadPlayer(playerUID);
         try
@@ -183,7 +183,7 @@ public class PropertiesDB implements CardDataBase
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
     }
 
@@ -205,11 +205,11 @@ public class PropertiesDB implements CardDataBase
 
     @Nonnull
     @Override
-    public AccountAddress createPrimaryAccount(@Nonnull UUID playerUID, @Nonnull String name) throws DataBaseException
+    public AccountAddress createPrimaryAccount(@Nonnull UUID playerUID, @Nonnull String name) throws DataStoreException, DuplicatedKeyException
     {
         Properties playerData = loadPlayer(playerUID);
         if(playerData.containsKey("account"))
-            throw new DataBaseException("Player "+playerUID+" already have an account: "+playerData.getProperty("account"));
+            throw new DuplicatedKeyException("Player "+playerUID+" already have an account: "+playerData.getProperty("account"));
 
         try
         {
@@ -225,17 +225,17 @@ public class PropertiesDB implements CardDataBase
 
             return account;
         }
-        catch (DataBaseException e)
+        catch (DataStoreException e)
         {
             throw e;
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
     }
 
-    private AccountAddress createAccount(UUID playerUID, String name) throws DataBaseException
+    private AccountAddress createAccount(UUID playerUID, String name) throws DataStoreException
     {
         try
         {
@@ -262,12 +262,12 @@ public class PropertiesDB implements CardDataBase
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
     }
 
     @Override
-    public UUID getAccountOwner(Object account) throws DataBaseException
+    public UUID getAccountOwner(@Nonnull Object account) throws DataStoreException
     {
         Properties properties = loadAccount(account.toString());
         if (properties == null || properties.getProperty("removed", "false").equals("true"))
@@ -278,12 +278,12 @@ public class PropertiesDB implements CardDataBase
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
     }
 
     @Override
-    public int getAccountBalance(Object account) throws DataBaseException
+    public int getAccountBalance(@Nonnull Object account) throws DataStoreException
     {
         if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
         Properties properties = loadAccount(account.toString());
@@ -296,7 +296,7 @@ public class PropertiesDB implements CardDataBase
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
     }
 
@@ -312,7 +312,7 @@ public class PropertiesDB implements CardDataBase
     }
 
     @Override
-    public int canDeposit(Object account, int coins) throws DataBaseException
+    public int canDeposit(@Nonnull Object account, int coins) throws DataStoreException
     {
         if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
         Properties properties = loadAccount(account.toString());
@@ -323,24 +323,24 @@ public class PropertiesDB implements CardDataBase
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
     }
 
     @Override
-    public int canDeposit(Object account, ItemStack coins) throws DataBaseException
+    public int canDeposit(@Nonnull Object account, ItemStack coins) throws DataStoreException
     {
         return canDeposit(account, UniversalCoinsServerAPI.stackValue(coins));
     }
 
     @Override
-    public int canDeposit(Object account, Collection<ItemStack> coins) throws DataBaseException
+    public int canDeposit(@Nonnull Object account, Collection<ItemStack> coins) throws DataStoreException
     {
         return canDeposit(account, UniversalCoinsServerAPI.stackValue(coins));
     }
 
     @Override
-    public int depositToAccount(Object account, ItemStack coins, Transaction transaction) throws DataBaseException
+    public int depositToAccount(@Nonnull Object account, ItemStack coins, @Nonnull Transaction transaction) throws DataStoreException
     {
         return depositToAccount(account, Collections.singleton(coins), transaction);
     }
@@ -374,7 +374,7 @@ public class PropertiesDB implements CardDataBase
     }
 
     @Override
-    public AccountAddress getCustomAccountByName(String customAccountName) throws DataBaseException
+    public AccountAddress getCustomAccountByName(@Nonnull String customAccountName) throws DataStoreException
     {
         try
         {
@@ -396,7 +396,7 @@ public class PropertiesDB implements CardDataBase
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
     }
 
@@ -410,19 +410,33 @@ public class PropertiesDB implements CardDataBase
         return readInt(properties, "version", Integer.MIN_VALUE);
     }
 
+    @Nonnull
     @Override
-    public AccountAddress transferAccount(AccountAddress origin, String destiny, Machine machine, Operator operator) throws DataBaseException
+    public AccountAddress transferAccount(@Nonnull AccountAddress origin, @Nonnull String destiny, Machine machine, Operator operator)
+            throws DataStoreException, AccountNotFoundException, DuplicatedKeyException
     {
-        return transferAccount(origin, destiny, machine, operator, false);
+        AccountAddress customAccountByName = getCustomAccountByName(origin.getName());
+        if(customAccountByName == null) throw new AccountNotFoundException(origin.getNumber());
+        return transferAccount(customAccountByName, destiny, machine, operator, false);
     }
 
+    @Nonnull
     @Override
-    public AccountAddress transferPrimaryAccount(AccountAddress primaryAccount, String newName, Machine machine, Operator operator) throws DataBaseException
+    public AccountAddress transferPrimaryAccount(@Nonnull AccountAddress primaryAccount, @Nonnull String newName, Machine machine, Operator operator)
+            throws DataStoreException, AccountNotFoundException
     {
-        return transferAccount(primaryAccount, newName, machine, operator, true);
+        try
+        {
+            return transferAccount(primaryAccount, newName, machine, operator, true);
+        }
+        catch (DuplicatedKeyException e)
+        {
+            throw new DataStoreException(e);
+        }
     }
 
-    private AccountAddress transferAccount(AccountAddress origin, String destiny, Machine machine, Operator operator, boolean primary) throws DataBaseException
+    private AccountAddress transferAccount(AccountAddress origin, String destiny, Machine machine, Operator operator, boolean primary)
+            throws DataStoreException, AccountNotFoundException, DuplicatedKeyException
     {
         Properties originAccount = loadAccount(origin.getNumber().toString());
         if(originAccount == null || originAccount.getProperty("removed","false").equals("true"))
@@ -511,12 +525,14 @@ public class PropertiesDB implements CardDataBase
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
     }
 
+    @Nonnull
     @Override
-    public AccountAddress createCustomAccount(UUID playerUID, String customAccountName) throws DataBaseException
+    public AccountAddress createCustomAccount(@Nonnull UUID playerUID, @Nonnull String customAccountName)
+            throws DataStoreException, DuplicatedKeyException
     {
         Properties playerProperties = loadPlayer(playerUID);
         try
@@ -555,18 +571,18 @@ public class PropertiesDB implements CardDataBase
 
             return account;
         }
-        catch (DataBaseException e)
+        catch (DataStoreException|DuplicatedKeyException e)
         {
             throw e;
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
     }
 
     @Override
-    public void processTrade(Transaction transaction) throws DataBaseException
+    public void processTrade(@Nonnull Transaction transaction) throws DataStoreException, OutOfCoinsException
     {
         Transaction.CoinSource ownerCoinSource = transaction.getOwnerCoinSource();
         Transaction.CoinSource userCoinSource = transaction.getUserCoinSource();
@@ -594,10 +610,10 @@ public class PropertiesDB implements CardDataBase
 
 
     @Override
-    public int takeFromAccount(Object account, int amount, Transaction transaction) throws DataBaseException
+    public int takeFromAccount(@Nonnull Object account, int amount, @Nonnull Transaction transaction) throws DataStoreException, OutOfCoinsException
     {
         Object[] ret = takeCoins(account, amount);
-        if(ret[0] == true)
+        if(Boolean.TRUE.equals(ret[0]))
         {
             try
             {
@@ -613,7 +629,7 @@ public class PropertiesDB implements CardDataBase
     }
 
     private Object[] takeCoins(Object account, int amount)
-            throws DataBaseException
+            throws DataStoreException, OutOfCoinsException
     {
         if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
         Properties properties = loadAccount(account.toString());
@@ -636,18 +652,18 @@ public class PropertiesDB implements CardDataBase
 
             return new Object[]{true,newBalance};
         }
-        catch (DataBaseException e)
+        catch (OutOfCoinsException e)
         {
             throw e;
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
     }
 
     @Override
-    public int depositToAccount(Object account, Collection<ItemStack> coinsStacks, Transaction transaction) throws DataBaseException
+    public int depositToAccount(@Nonnull Object account, Collection<ItemStack> coinsStacks, @Nonnull Transaction transaction) throws DataStoreException
     {
         if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
         int value = UniversalCoinsServerAPI.stackValue(coinsStacks);
@@ -658,17 +674,17 @@ public class PropertiesDB implements CardDataBase
         return deposit(properties, account.toString(), value, transaction);
     }
 
-    private int deposit(Object account, int value) throws DataBaseException
+    private int deposit(Object account, int value) throws DataStoreException
     {
         if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
         Properties properties = loadAccount(account.toString());
         return (int) deposit(properties, account.toString(), value)[1];
     }
 
-    private int deposit(Properties properties, String account, int value, Transaction transaction) throws DataBaseException
+    private int deposit(Properties properties, String account, int value, Transaction transaction) throws DataStoreException
     {
         Object[] ret = deposit(properties, account, value);
-        if(ret[0] == true)
+        if(Boolean.TRUE.equals(ret[0]))
             try
             {
                 saveTransaction(transaction);
@@ -681,7 +697,7 @@ public class PropertiesDB implements CardDataBase
         return (int) ret[1];
     }
 
-    private Object[] deposit(Properties properties, String account, int value) throws DataBaseException
+    private Object[] deposit(Properties properties, String account, int value) throws DataStoreException
     {
         if(value == 0)
             return new Object[]{false, 0};
@@ -706,12 +722,12 @@ public class PropertiesDB implements CardDataBase
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
     }
 
     @Override
-    public int depositToAccount(Object account, int value, Transaction transaction) throws DataBaseException
+    public int depositToAccount(@Nonnull Object account, int value, @Nonnull Transaction transaction) throws DataStoreException
     {
         if(account instanceof AccountAddress) account = ((AccountAddress) account).getNumber();
         Properties properties = loadAccount(account.toString());
@@ -809,7 +825,7 @@ public class PropertiesDB implements CardDataBase
         }
     }
 
-    public void saveMachine(Machine machine) throws DataBaseException
+    public void saveMachine(Machine machine) throws DataStoreException
     {
         try
         {
@@ -832,12 +848,12 @@ public class PropertiesDB implements CardDataBase
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
     }
 
     @Override
-    public void saveNewMachine(@Nonnull Machine machine) throws DataBaseException
+    public void saveNewMachine(@Nonnull Machine machine) throws DataStoreException
     {
         File file;
         try
@@ -846,7 +862,7 @@ public class PropertiesDB implements CardDataBase
         }
         catch (IOException e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
 
         try(FileWriter writer = new FileWriter(file, true))
@@ -861,14 +877,14 @@ public class PropertiesDB implements CardDataBase
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
 
         saveMachine(machine);
     }
 
     @Override
-    public void saveTransaction(@Nonnull Transaction transaction) throws DataBaseException
+    public void saveTransaction(@Nonnull Transaction transaction) throws DataStoreException
     {
         Machine machine = transaction.getMachine();
         if (machine == null)
@@ -924,7 +940,7 @@ public class PropertiesDB implements CardDataBase
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
     }
 

@@ -3,12 +3,16 @@ package br.com.gamemods.universalcoinsserver.datastore;
 import javax.annotation.Nonnull;
 import java.util.UUID;
 
+/**
+ * A simple identification of an account, it's immutable store only basic information
+ */
 public final class AccountAddress
 {
     @Nonnull
     private final Object number;
     @Nonnull
     private final String name;
+
     @Nonnull
     private final UUID owner;
 
@@ -29,18 +33,28 @@ public final class AccountAddress
                 '}';
     }
 
+    /**
+     * @return The account "number". The type is specified by the {@link CardDataBase}.
+     */
     @Nonnull
     public Object getNumber()
     {
         return number;
     }
 
+    /**
+     * The name of the account, if it's the player's primary account it will have the player name used when the
+     * account was created.
+     */
     @Nonnull
     public String getName()
     {
         return name;
     }
 
+    /**
+     * @return The player UUID
+     */
     @Nonnull
     public UUID getOwner()
     {

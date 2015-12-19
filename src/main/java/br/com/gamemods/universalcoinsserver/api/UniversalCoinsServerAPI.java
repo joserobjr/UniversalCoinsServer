@@ -24,6 +24,19 @@ public class UniversalCoinsServerAPI
 {
     public static final Random random = new Random();
 
+    public static Object getAccountNumber(Object account)
+    {
+        if(account instanceof AccountAddress) return ((AccountAddress) account).getNumber();
+        else if(account instanceof String) return account;
+        else if(account instanceof ItemStack)
+        {
+            AccountAddress address = getAddress((ItemStack) account);
+            return address == null? null : address.getNumber();
+        }
+        else if(account == null) return null;
+        else return account.toString();
+    }
+
     @Nonnull
     public static ScanResult scanCoins(@Nonnull IInventory inventory)
             throws NullPointerException
