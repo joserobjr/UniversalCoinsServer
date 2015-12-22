@@ -118,7 +118,7 @@ public class UniversalCoinsServerAPI
                         || stack.stackSize != amount)
                         throw new ConcurrentModificationException();
 
-                    int amountToTake = Math.min(Math.max(coins / value, 1), amount);
+                    int amountToTake = Math.min((coins / value)+1, amount);
                     if(amountToTake > 0)
                     {
                         stack.stackSize -= amountToTake;
