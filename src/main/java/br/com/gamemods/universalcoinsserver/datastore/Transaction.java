@@ -26,6 +26,21 @@ public final class Transaction
     private CoinSource userCoinSource;
     private CoinSource ownerCoinSource;
 
+    public Transaction(Machine machine, Operator operator, ItemStack product, ItemStack trade, Operation operation, boolean infiniteMachine, int quantity, int price, int totalPrice, CoinSource userCoinSource, CoinSource ownerCoinSource)
+    {
+        this.machine = machine;
+        this.operator = operator;
+        this.product = product;
+        this.trade = trade;
+        this.operation = operation;
+        this.infiniteMachine = infiniteMachine;
+        this.quantity = quantity;
+        this.price = price;
+        this.totalPrice = totalPrice;
+        this.userCoinSource = userCoinSource;
+        this.ownerCoinSource = ownerCoinSource;
+    }
+
     public Transaction(TileVendor vendor, Operation operation, int quantity,
                         CoinSource userSource, CoinSource ownerSource, ItemStack product)
     {
