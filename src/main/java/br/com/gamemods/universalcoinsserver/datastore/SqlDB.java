@@ -108,18 +108,19 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
         {
             pst.setString(1, machine.getMachineId().toString());
             TileEntity machineEntity = machine.getMachineEntity();
-            pst.setNull(2, machineEntity.xCoord);
-            pst.setNull(3, machineEntity.yCoord);
-            pst.setNull(4, machineEntity.zCoord);
+            pst.setInt(3, machineEntity.xCoord);
+            //noinspection SuspiciousNameCombination
+            pst.setInt(4, machineEntity.yCoord);
+            pst.setInt(5, machineEntity.zCoord);
             if(!machineEntity.hasWorldObj())
             {
-                pst.setNull(5, Types.INTEGER);
+                pst.setNull(2, Types.INTEGER);
                 pst.setNull(6, Types.VARCHAR);
                 pst.setNull(7, Types.INTEGER);
             }
             else
             {
-                pst.setInt(5, machineEntity.getWorldObj().provider.dimensionId);
+                pst.setInt(2, machineEntity.getWorldObj().provider.dimensionId);
                 String block = GameData.getBlockRegistry().getNameForObject(machineEntity.getBlockType());
 
                 if(block != null)
@@ -183,29 +184,30 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                     pst.setInt(field++, machineEntity.getWorldObj().provider.dimensionId);
                     String block = GameData.getBlockRegistry().getNameForObject(machineEntity.getBlockType());
 
-                    if(block != null)
+                    if (block != null)
                         pst.setString(field++, block);
                     else
                         pst.setNull(field++, Types.VARCHAR);
 
                     pst.setInt(field++, machineEntity.getBlockMetadata());
-                    pst.setString(field++, machineEntity.getClass().getName());
+                }
 
-                    if(machineEntity instanceof PlayerOwned)
-                    {
-                        UUID ownerId = ((PlayerOwned) machineEntity).getOwnerId();
-                        if(ownerId != null)
-                            pst.setString(field++, ownerId.toString());
-                        else
-                            pst.setNull(field++, Types.VARCHAR);
-                    }
+                pst.setString(field++, machineEntity.getClass().getName());
+
+                if(machineEntity instanceof PlayerOwned)
+                {
+                    UUID ownerId = ((PlayerOwned) machineEntity).getOwnerId();
+                    if(ownerId != null)
+                        pst.setString(field++, ownerId.toString());
                     else
                         pst.setNull(field++, Types.VARCHAR);
-
-                    pst.setString(field, machine.getMachineId().toString());
-
-                    pst.executeUpdate();
                 }
+                else
+                    pst.setNull(field++, Types.VARCHAR);
+
+                pst.setString(field, machine.getMachineId().toString());
+
+                pst.executeUpdate();
             }
             catch (SQLException e)
             {
@@ -269,7 +271,9 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             if(coinSource instanceof Transaction.MachineCoinSource)
             {
                 pst.setString(3, "machine");
-                pst.setString(4, ((Transaction.MachineCoinSource) coinSource).getMachine().getMachineId().toString());
+                Machine machine = ((Transaction.MachineCoinSource) coinSource).getMachine();
+                pst.setString(4, machine.getMachineId().toString());
+                updateMachine(machine);
             }
             else
             {
