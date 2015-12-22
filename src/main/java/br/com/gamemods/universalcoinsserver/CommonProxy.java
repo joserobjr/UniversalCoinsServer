@@ -1,7 +1,7 @@
 package br.com.gamemods.universalcoinsserver;
 
 import br.com.gamemods.universalcoinsserver.blocks.*;
-import br.com.gamemods.universalcoinsserver.datastore.SqlCardDatabase;
+import br.com.gamemods.universalcoinsserver.datastore.SqlDB;
 import br.com.gamemods.universalcoinsserver.item.*;
 import br.com.gamemods.universalcoinsserver.recipe.RecipeEnderCard;
 import br.com.gamemods.universalcoinsserver.recipe.RecipePlankTextureChange;
@@ -341,7 +341,7 @@ public class CommonProxy
         public void initConnection() throws ClassNotFoundException, SQLException
         {
             if(databaseType == 1)
-                UniversalCoinsServer.cardDb = new SqlCardDatabase(DriverManager.getConnection(sqlUrl, sqlUser, sqlPasswd));
+                UniversalCoinsServer.cardDb = new SqlDB(DriverManager.getConnection(sqlUrl, sqlUser, sqlPasswd));
 
             sqlUser = null;
             sqlPasswd = null;

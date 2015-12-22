@@ -11,9 +11,9 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.UUID;
 
-public class SqlCardDatabase extends AbstractSQL<AbstractSQL.SqlAccount>
+public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
 {
-    public SqlCardDatabase(Connection connection)
+    public SqlDB(Connection connection)
     {
         super(connection);
     }
