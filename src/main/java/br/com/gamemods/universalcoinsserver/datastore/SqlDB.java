@@ -613,8 +613,8 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             else
             {
                 try(PreparedStatement pst = connection.prepareStatement(
-                        "SELECT `account`, `terminated` " +
-                            "FROM `custom_accounts` AS ca LEFT JOIN `accounts` ON `number`=`account` " +
+                        "SELECT ca.`account`, ac.`terminated` AS `account_terminated`, ca.`terminated` AS `name_terminated` " +
+                            "FROM `custom_accounts` AS ca LEFT JOIN `accounts` AS ac ON `number`=`account` " +
                             "WHERE ca.name=?"
                 ))
                 {
@@ -751,7 +751,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
     public AccountAddress getCustomAccountByName(@Nonnull String customAccountName) throws DataStoreException
     {
         try(PreparedStatement pst = connection.prepareStatement(
-                "SELECT ac.number, ac.name, ac.owner FROM `custom_accounts` AS ca INNER JOIN `accounts` ON `number`=`account` AND ca.name=?"
+                "SELECT ac.number, ac.name, ac.owner FROM `custom_accounts` AS ca INNER JOIN `accounts` AS ac ON `number`=`account` AND ca.name=?"
         ))
         {
             pst.setString(1, customAccountName);
