@@ -46,6 +46,16 @@ public final class PlayerData
         return primaryAccount;
     }
 
+    public boolean hasPrimaryAccount()
+    {
+        return primaryAccount != null;
+    }
+
+    public boolean hasCustomAccount()
+    {
+        return !alternativeAccounts.isEmpty();
+    }
+
     public Collection<AccountAddress> getAlternativeAccounts()
     {
         return alternativeAccounts;

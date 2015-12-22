@@ -278,7 +278,7 @@ public class UniversalCoinsServerAPI
         for(int slot = startIndex; slot < endIndex; slot++)
         {
             ItemStack stack = inventory.getStackInSlot(slot);
-            Item item = stack.getItem();
+            Item item = stack == null? null : stack.getItem();
             if(item instanceof ItemCoin && inventory.isItemValidForSlot(slot, stack) && stack.stackSize > 0)
             {
                 int stackValue = ((ItemCoin) item).getValue() * stack.stackSize;
@@ -297,6 +297,47 @@ public class UniversalCoinsServerAPI
     public static void takeCoinsReturningChange(@Nonnull ScanResult scanResult, int coins, @Nonnull EntityPlayer player)
     {
         takeCoinsReturningChange(scanResult, coins, player, 2);
+    }
+
+    public static int giveCoins(EntityPlayer player, int coins)
+    {
+        return giveCoins(player, coins, 3);
+    }
+
+    public static int giveCoins(EntityPlayer player, int coins, int giveStrategy)
+    {
+        return giveCoins(null, player, coins, giveStrategy);
+    }
+
+    public static int giveCoins(@Nullable ScanResult scanResult, EntityPlayer player, int coins, int giveStrategy)
+    {
+        int change = 0;
+        if(scanResult != null && scanResult.getScannedInventory().equals(player.inventory))
+            change = addCoins(scanResult, coins);
+        else
+            change = addCoins(player.inventory, coins);
+
+        if(change <= 0)
+            return change;
+
+        if((giveStrategy & 1) > 0)
+        {
+            InventoryEnderChest enderChest = player.getInventoryEnderChest();
+            change = addCoinsAnywhere(enderChest, change);
+            if(change <= 0) return change;
+
+            change += rebalance(enderChest);
+            change = addCoinsAnywhere(enderChest, change);
+            if(change <= 0) return change;
+        }
+
+        if((giveStrategy & 2) > 0)
+        {
+            dropAtEntity(player, change);
+            return 0;
+        }
+
+        return change;
     }
 
     public static int takeCoinsReturningChange(@Nonnull ScanResult scanResult, int coins, @Nonnull EntityPlayer player, int returnStrategy)

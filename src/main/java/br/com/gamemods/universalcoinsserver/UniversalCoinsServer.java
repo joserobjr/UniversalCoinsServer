@@ -1,5 +1,7 @@
 package br.com.gamemods.universalcoinsserver;
 
+import br.com.gamemods.universalcoinsserver.command.CommandBalance;
+import br.com.gamemods.universalcoinsserver.command.CommandGive;
 import br.com.gamemods.universalcoinsserver.datastore.CardDataBase;
 import br.com.gamemods.universalcoinsserver.datastore.DataBaseException;
 import br.com.gamemods.universalcoinsserver.net.*;
@@ -8,6 +10,7 @@ import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartedEvent;
+import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import cpw.mods.fml.relauncher.Side;
@@ -84,6 +87,18 @@ public class UniversalCoinsServer
                     new WeightedRandomChestContent(new ItemStack(proxy.coins[proxy.configs.chestCoin]), proxy.configs.chestMinStack, proxy.configs.chestMaxStack, proxy.configs.dungeonCoinChance));
 
         proxy.configs = null;
+    }
+
+    @Mod.EventHandler
+    public void serverStarting(FMLServerStartingEvent event)
+    {
+        event.registerServerCommand(new CommandBalance());
+        event.registerServerCommand(new CommandGive());
+
+        /* Instable
+        event.registerServerCommand(new CommandRebalance());
+        event.registerServerCommand(new CommandSend());
+        */
     }
 
     @Mod.EventHandler
