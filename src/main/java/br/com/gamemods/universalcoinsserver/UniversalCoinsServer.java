@@ -43,6 +43,7 @@ public class UniversalCoinsServer
         proxy.configs.load();
         logger = event.getModLog();
 
+        MinecraftForge.EVENT_BUS.register(new PlayerPickupEventHandler());
         if(proxy.configs.mobsDropCoins)
             MinecraftForge.EVENT_BUS.register(new MobDropEventHandler());
 
@@ -63,13 +64,15 @@ public class UniversalCoinsServer
     }
 
     @Mod.EventHandler
-    public void init(FMLInitializationEvent event)
+    public void init(FMLInitializationEvent event) throws SQLException, ClassNotFoundException
     {
+        proxy.configs.initConnection();
         proxy.registerBlocks();
         proxy.registerItems();
         proxy.registerTiles();
         proxy.registerGuis();
         proxy.registerRecipes();
+        proxy.registerAchievements();
 
         if(proxy.configs.coinsInMineshaft)
             ChestGenHooks.getInfo(ChestGenHooks.MINESHAFT_CORRIDOR).addItem(

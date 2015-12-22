@@ -15,6 +15,8 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.stats.Achievement;
+import net.minecraftforge.common.AchievementPage;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
 import net.minecraftforge.oredict.RecipeSorter;
@@ -57,6 +59,8 @@ public class CommonProxy
     public int smallPackagePrice = 10, medPackagePrice= 20, largePackagePrice = 40;
     public boolean enderDepositFromMachine, enderDepositFromTransaction, enderDepositFromInventory, enderCheckBalance;
     public boolean cardCheckBalance, cardDepositFromTransaction;
+    public Achievement achievementCoin, achievementThousand, achievementMillion, achievementBillion, achievementMaxed;
+    public AchievementPage achievementPage;
 
     class ConfigLoader
     {
@@ -73,6 +77,11 @@ public class CommonProxy
         boolean coinsInMineshaft, coinsInDungeon, mobsDropCoins;
 
         int chestCoin, chestMinStack, chestMaxStack;
+
+        int databaseType;
+        String sqlUrl;
+        String sqlUser;
+        String sqlPasswd;
 
         ConfigLoader(Configuration source){ this.source = source; }
 
@@ -312,16 +321,30 @@ public class CommonProxy
             prop.comment = "Defines how the bank accounts and transactions will be stored\n\n1: properties - A simple file-based implementation that " +
                     "saves the data as raw text. Simple but not reliable.\n" +
                     "2: sql - Uses an external database software like MySQL or an SQL library like SQLite. (IMPORTANT: The tables aren't created automatically on this version)";
-            int databaseType = prop.getInt(1);
+            databaseType = prop.getInt(1);
 
-            prop = source.get(category, "SQL URL", "mysql://user:password@localhost/database_name?autoReconnect=true");
+            prop = source.get(category, "SQL URL", "jdbc:mysql://localhost:3306/database_name?autoReconnect=true");
             prop.comment = "The URL for the SQL server";
-            String url = prop.getString();
+            sqlUrl = prop.getString();
 
-            if(databaseType == 1)
-                UniversalCoinsServer.cardDb = new SqlDB(DriverManager.getConnection(url));
+            prop = source.get(category, "SQL User", "user");
+            prop.comment="The username used to connect to the SQL Server.";
+            sqlUser = prop.getString();
+
+            prop = source.get(category, "SQL Password", "password");
+            prop.comment="The password used to connect to the SQL Server.";
+            sqlPasswd = prop.getString();
 
             this.source.save();
+        }
+
+        public void initConnection() throws ClassNotFoundException, SQLException
+        {
+            if(databaseType == 1)
+                UniversalCoinsServer.cardDb = new SqlDB(DriverManager.getConnection(sqlUrl, sqlUser, sqlPasswd));
+
+            sqlUser = null;
+            sqlPasswd = null;
         }
     }
 
@@ -391,6 +414,23 @@ public class CommonProxy
     public void registerGuis()
     {
         NetworkRegistry.INSTANCE.registerGuiHandler(UniversalCoinsServer.instance, new GuiHandler());
+    }
+
+    public void registerAchievements()
+    {
+        achievementCoin = new Achievement("achievement.coin", "AchievementCoin", 0, 0, itemCoin, null);
+        achievementThousand = new Achievement("achievement.thousand", "AchievementThousand", 2, 0, itemSmallCoinStack, achievementCoin);
+        achievementMillion = new Achievement("achievement.million", "AchievementMillion", 4, 0, itemLargeCoinStack, achievementThousand);
+        achievementBillion = new Achievement("achievement.billion", "AchievementBillion", 6, 0, itemSmallCoinBag, achievementMillion);
+        achievementMaxed = new Achievement("achievement.maxed", "AchievementMaxed", 8, 0, itemLargeCoinBag, achievementBillion);
+        achievementPage = new AchievementPage("Universal Coins", achievementCoin, achievementThousand, achievementMillion, achievementBillion, achievementMaxed);
+
+        AchievementPage.registerAchievementPage(achievementPage);
+        achievementCoin.registerStat();
+        achievementThousand.registerStat();
+        achievementMillion.registerStat();
+        achievementBillion.registerStat();
+        achievementMaxed.registerStat();
     }
 
     public void registerRecipes()
