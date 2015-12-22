@@ -42,7 +42,7 @@ public abstract class AbstractSQL<A extends AbstractSQL.SqlAccount> extends Abst
                 if(!inTransaction)
                     connection.setAutoCommit(false);
 
-                try (PreparedStatement pst = connection.prepareStatement("UPDATE accounts SET balance=balance+? WHERE number=?"))
+                try (PreparedStatement pst = connection.prepareStatement("UPDATE `accounts` SET `balance`=`balance`+? WHERE `number`=?"))
                 {
                     pst.setInt(1, increment);
                     pst.setString(2, id);

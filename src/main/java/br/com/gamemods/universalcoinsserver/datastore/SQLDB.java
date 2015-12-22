@@ -22,7 +22,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
     @Override
     protected SqlAccount getAccount(@Nonnull String number) throws DataStoreException
     {
-        try(PreparedStatement pst = connection.prepareStatement("SELECT number, owner, balance, `primary` FROM accounts WHERE number=?"))
+        try(PreparedStatement pst = connection.prepareStatement("SELECT `number`, `owner`, `balance`, `primary` FROM `accounts` WHERE `number`=?"))
         {
             pst.setString(1, number);
             ResultSet result = pst.executeQuery();
@@ -42,7 +42,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
     protected SqlAccount getCustomAccount(@Nonnull String name) throws DataStoreException
     {
         try(PreparedStatement pst = connection.prepareStatement(
-                "SELECT ac.number, ac.owner, ac.balance, ac.primary FROM custom_accounts ca INNER JOIN accounts ON number=account WHERE ca.name=? AND terminated IS NULL"
+                "SELECT ac.number, ac.owner, ac.balance, ac.primary FROM `custom_accounts` AS ca INNER JOIN `accounts` ON `number`=`account` WHERE ca.name=? AND `terminated` IS NULL"
         ))
         {
             pst.setString(1, name);
@@ -102,9 +102,9 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
     public void saveNewMachine(@Nonnull Machine machine) throws DataStoreException
     {
         try(PreparedStatement pst = connection.prepareStatement(
-                "INSERT INTO machines(machine_id,dim,x,y,z,block,metadata,tile,owner) " +
-                              "VALUES(     ?    ,  ?,?,?,?,  ?  ,   ?    ,  ? ,  ?  )"))
-                                        // 1       2 3 4 5   6      7       8    9
+                "INSERT INTO `machines`(`machine_id`,`dim`,`x`,`y`,`z`,`block`,`metadata`,`tile`,`owner`) " +
+                              "VALUES  (     ?      ,  ?  , ? , ? , ? ,   ?   ,    ?     ,   ?  ,   ?   )"))
+                                        //   1         2    3   4   5     6        7         8      9
         {
             pst.setString(1, machine.getMachineId().toString());
             TileEntity machineEntity = machine.getMachineEntity();
@@ -154,7 +154,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
     {
         if(machine == null) return;
         boolean found;
-        try(PreparedStatement pst = connection.prepareStatement("SELECT x FROM machines WHERE machine_id=?"))
+        try(PreparedStatement pst = connection.prepareStatement("SELECT `x` FROM `machines` WHERE `machine_id`=?"))
         {
             pst.setString(1, machine.getMachineId().toString());
             found = pst.executeQuery().next();
@@ -171,8 +171,8 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             TileEntity machineEntity = machine.getMachineEntity();
             boolean worldObj = machineEntity.hasWorldObj();
             try(PreparedStatement pst = connection.prepareStatement(
-                    "UPDATE machines SET x=?,y=?,z=?"+(worldObj?",dim=?,block=?,metadata=?":"")+",tile=?,owner=?) WHERE machine_id=?"))
-                                        // 1   2   3                  4       5          6         4/7     5/8                6/9
+                    "UPDATE `machines` SET `x`=?,`y`=?,`z`=?"+(worldObj?",`dim`=?,`block`=?,`metadata`=?":"")+",`tile`=?,`owner`=? WHERE `machine_id`=?"))
+                                        //  1     2     3                       4         5            6           4/7      5/8                 6/9
             {
                 int field = 1;
                 pst.setNull(field++, machineEntity.xCoord);
@@ -256,10 +256,10 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
     private int registerCoinSource(Transaction.CoinSource coinSource) throws SQLException, DataStoreException
     {
         try(PreparedStatement pst = connection.prepareStatement(
-                "INSERT INTO coin_source(before,after,type,machine,account,card_item,card_damage,card_amount," +
-                                        // 1   ,  2  ,  3 ,  4    ,   5   ,     6   ,   7       ,    8
-                        "card_nbt,player_operator,block_operator) " +
-                        //  9    ,       10      ,     11
+                "INSERT INTO `coin_source`(`before`,`after`,`type`,`machine`,`account`,`card_item`,`card_damage`,`card_amount`," +
+                                          //   1   ,   2   ,   3  ,   4     ,    5    ,      6    ,    7        ,     8
+                        "`card_nbt`,`player_operator`,`block_operator`) " +
+                        //    9    ,        10       ,      11
                     "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                 PreparedStatement.RETURN_GENERATED_KEYS
         ))
@@ -325,6 +325,11 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                 else
                     pst.setNull(11, Types.INTEGER);
             }
+            else
+            {
+                pst.setNull(10, Types.VARCHAR);
+                pst.setNull(11, Types.INTEGER);
+            }
 
             pst.executeUpdate();
             ResultSet generatedKeys = pst.getGeneratedKeys();
@@ -337,9 +342,9 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
     private int saveBlockOperator(BlockOperator blockOperator) throws SQLException, DataStoreException
     {
         try(PreparedStatement pst = connection.prepareStatement(
-                "SELECT operator_id FROM block_operators WHERE " +
-                        "x=? AND y=? AND z=? AND dim=? AND block_id=? AND block_meta =? " +
-                        "AND owner=? AND machine_id=? AND machine_type=?"
+                "SELECT `operator_id` FROM `block_operators` WHERE " +
+                        "`x`=? AND `y`=? AND `z`=? AND `dim`=? AND `block_id`=? AND `block_meta` =? " +
+                        "AND `owner`=? AND `machine_id`=? AND `machine_type`=?"
         ))
         {
             addBlockOperatorData(pst, blockOperator);
@@ -349,7 +354,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
         }
 
         try(PreparedStatement pst = connection.prepareStatement(
-                "INSERT INTO block_operators(x,y,z,dim,block_id,block_meta,owner,machine_id,machine_type) " +
+                "INSERT INTO `block_operators`(`x`,`y`,`z`,`dim`,`block_id`,`block_meta`,`owner`,`machine_id`,`machine_type`) " +
                         "VALUES(?,?,?,?,?,?,?,?,?)",
                 PreparedStatement.RETURN_GENERATED_KEYS
         ))
@@ -366,10 +371,20 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
     @Override
     public void saveTransaction(@Nonnull Transaction transaction) throws DataStoreException
     {
+        boolean inTransaction;
+        try
+        {
+            inTransaction = !connection.getAutoCommit();
+        } catch (SQLException e)
+        {
+            throw new DataStoreException(e);
+        }
+
         updateMachine(transaction.getMachine());
         try
         {
-            connection.setAutoCommit(false);
+            if(!inTransaction)
+                connection.setAutoCommit(false);
 
             Operator operator = transaction.getOperator();
             int blockOperatorId;
@@ -388,97 +403,120 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
 
 
             try(PreparedStatement pst = connection.prepareStatement(
-                    "INSERT INTO transactions(transaction_id,time,machine,player_operator,block_operator," +
-                            "product_item,product_damage,product_amount,product_nbt,trade_item,trade_damage,trade_amount,trade_nbt," +
-                            "operation,infinite,quantity,price,total_price,user_coinsource,owner_coinsource) " +
-                            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                    "INSERT INTO `transactions`(`transaction_id`,`time`,`machine`,`player_operator`,`block_operator`," +
+                                                //     1        ,   2  ,     3   ,         4       ,    5
+                            "`product_item`,`product_damage`,`product_amount`,`product_nbt`,`trade_item`,`trade_damage`,`trade_amount`,`trade_nbt`," +
+                            //     6       ,      7         ,        8       ,       9     ,      10    ,     11       ,      12      ,     13
+                            "`operation`,`infinite`,`quantity`,`price`,`total_price`,`user_coinsource`,`owner_coinsource`) " +
+                            //   14     ,     15   ,    16    ,   17  ,     18      ,     19          ,      20
+                            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
             ))
             {
-                int field = 1;
-                pst.setString(field++, transaction.getId().toString());
-                pst.setTimestamp(field++, new Timestamp(transaction.getTime()));
+                pst.setString(1, transaction.getId().toString());
+                pst.setTimestamp(2, new Timestamp(transaction.getTime()));
                 Machine machine = transaction.getMachine();
                 if(machine != null)
-                    pst.setString(field++, machine.getMachineId().toString());
+                    pst.setString(3, machine.getMachineId().toString());
                 else
-                    pst.setNull(field++, Types.CHAR);
+                    pst.setNull(3, Types.CHAR);
                 if(operator instanceof PlayerOperator)
                 {
-                    pst.setString(field++, ((PlayerOperator) operator).getPlayerId().toString());
-                    pst.setNull(field++, Types.INTEGER);
+                    pst.setString(4, ((PlayerOperator) operator).getPlayerId().toString());
+                    pst.setNull(5, Types.INTEGER);
                 }
                 else if(operator instanceof BlockOperator)
                 {
-                    pst.setNull(field++, Types.CHAR);
-                    pst.setInt(field++, blockOperatorId);
+                    pst.setNull(4, Types.CHAR);
+                    pst.setInt(5, blockOperatorId);
                 }
                 ItemStack stack = transaction.getProduct();
                 if(stack != null)
                 {
                     String type = GameData.getItemRegistry().getNameForObject(stack.getItem());
                     if(type == null) type = stack.getItem().getClass().getName();
-                    pst.setString(field++, type);
-                    pst.setInt(field++, stack.getItemDamage());
-                    pst.setInt(field++, stack.stackSize);
+                    pst.setString(6, type);
+                    pst.setInt(7, stack.getItemDamage());
+                    pst.setInt(8, stack.stackSize);
                     if(stack.stackTagCompound != null)
-                        pst.setString(field++, stack.stackTagCompound.toString());
+                        pst.setString(9, stack.stackTagCompound.toString());
                     else
-                        pst.setNull(field++, Types.VARCHAR);
+                        pst.setNull(9, Types.VARCHAR);
                 }
+                else
+                {
+                    pst.setNull(6, Types.VARCHAR);
+                    pst.setNull(7, Types.INTEGER);
+                    pst.setNull(8, Types.INTEGER);
+                    pst.setNull(9, Types.VARCHAR);
+                }
+
                 stack = transaction.getTrade();
                 if(stack != null)
                 {
                     String type = GameData.getItemRegistry().getNameForObject(stack.getItem());
                     if(type == null) type = stack.getItem().getClass().getName();
-                    pst.setString(field++, type);
-                    pst.setInt(field++, stack.getItemDamage());
-                    pst.setInt(field++, stack.stackSize);
+                    pst.setString(10, type);
+                    pst.setInt(11, stack.getItemDamage());
+                    pst.setInt(12, stack.stackSize);
                     if(stack.stackTagCompound != null)
-                        pst.setString(field++, stack.stackTagCompound.toString());
+                        pst.setString(13, stack.stackTagCompound.toString());
                     else
-                        pst.setNull(field++, Types.VARCHAR);
+                        pst.setNull(13, Types.VARCHAR);
                 }
-                pst.setString(field++, transaction.getOperation().name());
-                pst.setBoolean(field++, transaction.isInfiniteMachine());
-                pst.setInt(field++, transaction.getQuantity());
-                pst.setInt(field++, transaction.getPrice());
-                pst.setInt(field++, transaction.getTotalPrice());
-                if(userCoinSource > -1)
-                    pst.setInt(field++, userCoinSource);
                 else
-                    pst.setNull(field++, Types.INTEGER);
+                {
+                    pst.setNull(10, Types.VARCHAR);
+                    pst.setNull(11, Types.INTEGER);
+                    pst.setNull(12, Types.INTEGER);
+                    pst.setNull(13, Types.VARCHAR);
+                }
+
+                pst.setString(14, transaction.getOperation().name());
+                pst.setBoolean(15, transaction.isInfiniteMachine());
+                pst.setInt(16, transaction.getQuantity());
+                pst.setInt(17, transaction.getPrice());
+                pst.setInt(18, transaction.getTotalPrice());
+                if(userCoinSource > -1)
+                    pst.setInt(19, userCoinSource);
+                else
+                    pst.setNull(19, Types.INTEGER);
 
                 if(ownerCoinSource > -1)
-                    pst.setInt(field, ownerCoinSource);
+                    pst.setInt(20, ownerCoinSource);
                 else
-                    pst.setNull(field, Types.INTEGER);
+                    pst.setNull(20, Types.INTEGER);
 
                 pst.executeUpdate();
-                connection.commit();
+
+                if(!inTransaction)
+                    connection.commit();
             }
 
         }
         catch (SQLException e)
         {
-            try
-            {
-                connection.rollback();
-            }
-            catch (Exception e1)
-            {
-                e1.printStackTrace();
-            }
+            if(!inTransaction)
+                try
+                {
+                    connection.rollback();
+                }
+                catch (Exception e1)
+                {
+                    e1.printStackTrace();
+                }
+
             throw new DataStoreException(e);
         }
         finally
         {
-            try
-            {
-                connection.setAutoCommit(true);
-            } catch (SQLException e)
-            {
-                e.printStackTrace();
-            }
+            if(!inTransaction)
+                try
+                {
+                    connection.setAutoCommit(true);
+                } catch (SQLException e)
+                {
+                    e.printStackTrace();
+                }
         }
     }
 
@@ -490,9 +528,9 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
         {
             AccountAddress primary;
             try(PreparedStatement pst = connection.prepareStatement(
-                    "SELECT primary_account, ac.name,ac.owner " +
-                        "FROM user_data LEFT JOIN accounts ac ON ac.number=primary_account " +
-                        "WHERE player_id=?"
+                    "SELECT `primary_account`, ac.name,ac.owner " +
+                        "FROM `user_data` LEFT JOIN `accounts` AS ac ON ac.number=`primary_account` " +
+                        "WHERE `player_id`=?"
             ))
             {
                 pst.setString(1, playerUID.toString());
@@ -506,7 +544,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             ArrayList<AccountAddress> customAccounts = new ArrayList<>();
             try(PreparedStatement pst = connection.prepareStatement(
                     "SELECT ac.number, ac.name, ac.owner " +
-                        "FROM custom_accounts ca INNER JOIN accounts ac ON ac.number=ca.account " +
+                        "FROM `custom_accounts` AS ca INNER JOIN `accounts` AS ac ON ac.number=ca.account " +
                         "WHERE ac.owner=?"
             ))
             {
@@ -536,6 +574,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
     {
         boolean inTransaction;
         boolean deleteOldReference = false;
+        String playerId = playerUID.toString();
         try
         {
             inTransaction = !connection.getAutoCommit();
@@ -545,12 +584,12 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                 if(!transference)
                 {
                     try(PreparedStatement pst = connection.prepareStatement(
-                            "SELECT primary_account, terminated " +
-                                    "FROM user_data LEFT JOIN accounts ON number=primary_account " +
-                                    "WHERE player_id=?"
+                            "SELECT `primary_account`, `terminated` " +
+                                    "FROM `user_data` LEFT JOIN accounts ON `number`=`primary_account` " +
+                                    "WHERE `player_id`=?"
                     ))
                     {
-                        pst.setString(1, playerUID.toString());
+                        pst.setString(1, playerId);
                         ResultSet result = pst.executeQuery();
                         if(result.next())
                         {
@@ -570,8 +609,8 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             else
             {
                 try(PreparedStatement pst = connection.prepareStatement(
-                        "SELECT account, terminated " +
-                            "FROM custom_accounts ca LEFT JOIN accounts ON number=account " +
+                        "SELECT `account`, `terminated` " +
+                            "FROM `custom_accounts` AS ca LEFT JOIN `accounts` ON `number`=`account` " +
                             "WHERE ca.name=?"
                 ))
                 {
@@ -603,7 +642,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
 
             String number;
             try(PreparedStatement pst = connection.prepareStatement(
-                    "SELECT owner FROM accounts WHERE number=?"
+                    "SELECT `owner` FROM `accounts` WHERE `number`=?"
             ))
             {
                 do
@@ -613,12 +652,31 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                 } while (pst.executeQuery().next());
             }
 
+            boolean registerUser;
+            try(PreparedStatement pst = connection.prepareStatement(
+                    "SELECT `primary_account` FROM `user_data` WHERE `player_id`=?"
+            ))
+            {
+                pst.setString(1, playerId);
+                ResultSet result = pst.executeQuery();
+                registerUser = !result.next();
+            }
+
+            if(registerUser)
+                try(PreparedStatement pst = connection.prepareStatement(
+                        "INSERT INTO `user_data`(`player_id`) VALUES(?)"
+                ))
+                {
+                    pst.setString(1, playerId);
+                    pst.executeUpdate();
+                }
+
             try (PreparedStatement pst = connection.prepareStatement(
-                    "INSERT INTO accounts(number,owner,name,primary) VALUES(?,?,?,?)"
+                    "INSERT INTO `accounts`(`number`,`owner`,`name`,`primary`) VALUES(?,?,?,?)"
             ))
             {
                 pst.setString(1, number);
-                pst.setString(2, playerUID.toString());
+                pst.setString(2, playerId);
                 pst.setString(3, name);
                 pst.setBoolean(4, primary);
                 pst.executeUpdate();
@@ -627,11 +685,11 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             if(primary)
             {
                 try(PreparedStatement pst = connection.prepareStatement(
-                        "UPDATE user_data SET primary_account=? WHERE player_id=?"
+                        "UPDATE `user_data` SET `primary_account`=? WHERE `player_id`=?"
                 ))
                 {
                     pst.setString(1, number);
-                    pst.setString(2, playerUID.toString());
+                    pst.setString(2, playerId);
                     pst.executeUpdate();
                 }
             }
@@ -639,7 +697,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             {
                 if(deleteOldReference)
                     try(PreparedStatement pst = connection.prepareStatement(
-                            "DELETE FROM custom_accounts WHERE name=?"
+                            "DELETE FROM `custom_accounts` WHERE `name`=?"
                     ))
                     {
                         pst.setString(1, name);
@@ -647,7 +705,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                     }
 
                 try(PreparedStatement pst = connection.prepareStatement(
-                        "INSERT INTO custom_accounts(name,account) VALUES(?,?)"
+                        "INSERT INTO `custom_accounts`(`name`,`account`) VALUES(?,?)"
                 ))
                 {
                     pst.setString(1, name);
@@ -689,7 +747,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
     public AccountAddress getCustomAccountByName(@Nonnull String customAccountName) throws DataStoreException
     {
         try(PreparedStatement pst = connection.prepareStatement(
-                "SELECT ac.number, ac.name, ac.owner FROM custom_accounts ca INNER JOIN accounts ON number=account AND ca.name=?"
+                "SELECT ac.number, ac.name, ac.owner FROM `custom_accounts` AS ca INNER JOIN `accounts` ON `number`=`account` AND ca.name=?"
         ))
         {
             pst.setString(1, customAccountName);
@@ -733,7 +791,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             connection.setAutoCommit(false);
             AccountAddress newAccount = transfer(primaryAccount, newName, machine, operator);
             try(PreparedStatement pst = connection.prepareStatement(
-                    "UPDATE user_data SET primary_account=? WHERE player_id=?"
+                    "UPDATE `user_data` SET `primary_account`=? WHERE `player_id`=?"
             ))
             {
                 pst.setString(1, newAccount.getNumber().toString());
@@ -794,7 +852,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             assert newAccount != null;
 
             try(PreparedStatement pst = connection.prepareStatement(
-                    "UPDATE accounts SET balance=0, terminated=?, transferred=? WHERE number=?"
+                    "UPDATE `accounts` SET `balance`=0, `terminated`=?, `transferred`=? WHERE `number`=?"
             ))
             {
                 pst.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
