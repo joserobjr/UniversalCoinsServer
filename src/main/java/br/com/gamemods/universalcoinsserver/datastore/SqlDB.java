@@ -22,7 +22,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
     @Override
     protected SqlAccount getAccount(@Nonnull String number) throws DataStoreException
     {
-        try(PreparedStatement pst = connection.prepareStatement("SELECT `number`, `owner`, `balance`, `primary` FROM `accounts` WHERE `number`=?"))
+        try(PreparedStatement pst = connection.prepareStatement("SELECT `number`, `owner`, `balance`, `primary` FROM `accounts` WHERE `number`=? AND `terminated` IS NULL"))
         {
             pst.setString(1, number);
             ResultSet result = pst.executeQuery();
@@ -74,7 +74,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             saveTransaction(transaction);
             connection.commit();
         }
-        catch (SQLException e)
+        catch (Throwable e)
         {
             try
             {
@@ -497,7 +497,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             }
 
         }
-        catch (SQLException e)
+        catch (Throwable e)
         {
             if(!inTransaction)
                 try
@@ -549,7 +549,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             try(PreparedStatement pst = connection.prepareStatement(
                     "SELECT ac.number, ac.name, ac.owner " +
                         "FROM `custom_accounts` AS ca INNER JOIN `accounts` AS ac ON ac.number=ca.account " +
-                        "WHERE ac.owner=?"
+                        "WHERE ac.owner=? AND ac.terminated IS NULL AND ca.terminated IS NULL"
             ))
             {
                 pst.setString(1, playerUID.toString());
@@ -718,10 +718,11 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                 }
             }
 
-            connection.commit();
+            if(!inTransaction)
+                connection.commit();
             return new AccountAddress(number, name, playerUID);
         }
-        catch (SQLException e)
+        catch (Throwable e)
         {
             try
             {
@@ -735,14 +736,15 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
         }
         finally
         {
-            try
-            {
-                connection.setAutoCommit(true);
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
+            if(!inTransaction)
+                try
+                {
+                    connection.setAutoCommit(true);
+                }
+                catch (Exception e)
+                {
+                    e.printStackTrace();
+                }
         }
     }
 
@@ -751,7 +753,10 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
     public AccountAddress getCustomAccountByName(@Nonnull String customAccountName) throws DataStoreException
     {
         try(PreparedStatement pst = connection.prepareStatement(
-                "SELECT ac.number, ac.name, ac.owner FROM `custom_accounts` AS ca INNER JOIN `accounts` AS ac ON `number`=`account` AND ca.name=?"
+                "SELECT ac.number, ac.name, ac.owner " +
+                    "FROM `custom_accounts` AS ca " +
+                        "INNER JOIN `accounts` AS ac ON `number`=`account` AND ca.name=? " +
+                    "WHERE ca.`terminated` IS NULL AND ac.`terminated` IS NULL"
         ))
         {
             pst.setString(1, customAccountName);
@@ -782,7 +787,48 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
         if(customAccountByName == null)
             throw new AccountNotFoundException(origin);
 
-        return transfer(origin, destiny, machine, operator);
+        try
+        {
+            connection.setAutoCommit(false);
+
+            AccountAddress newAccount = transfer(origin, destiny, machine, operator, false);
+
+            try(PreparedStatement pst = connection.prepareStatement(
+                    "UPDATE `custom_accounts` SET `terminated`=?, `transferred`=?, `transferred_name`=? WHERE `name`=?"
+                                                        //     1                2                     3              4
+            ))
+            {
+                pst.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
+                pst.setString(2, newAccount.getNumber().toString());
+                pst.setString(3, newAccount.getName());
+                pst.setString(4, origin.getName());
+                pst.executeUpdate();
+            }
+
+            return newAccount;
+        }
+        catch (Throwable e)
+        {
+            try
+            {
+                connection.rollback();
+            } catch (SQLException e1)
+            {
+                e1.printStackTrace();
+            }
+
+            throw new DataStoreException(e);
+        }
+        finally
+        {
+            try
+            {
+                connection.setAutoCommit(true);
+            } catch (SQLException e)
+            {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Nonnull
@@ -793,7 +839,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
         try
         {
             connection.setAutoCommit(false);
-            AccountAddress newAccount = transfer(primaryAccount, newName, machine, operator);
+            AccountAddress newAccount = transfer(primaryAccount, newName, machine, operator, true);
             try(PreparedStatement pst = connection.prepareStatement(
                     "UPDATE `user_data` SET `primary_account`=? WHERE `player_id`=?"
             ))
@@ -806,7 +852,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             connection.commit();
             return newAccount;
         }
-        catch (SQLException e)
+        catch (Throwable e)
         {
             try
             {
@@ -830,7 +876,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
     }
 
     @Nonnull
-    private AccountAddress transfer(@Nonnull AccountAddress oldAccount, @Nonnull String newName, @Nullable Machine machine, @Nullable Operator operator)
+    private AccountAddress transfer(@Nonnull AccountAddress oldAccount, @Nonnull String newName, @Nullable Machine machine, @Nullable Operator operator, boolean primary)
             throws DataStoreException, AccountNotFoundException
     {
         AbstractSQL.SqlAccount account = getAccount(oldAccount.getNumber());
@@ -840,7 +886,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
         boolean inTransaction;
         try
         {
-            inTransaction = connection.getAutoCommit();
+            inTransaction = !connection.getAutoCommit();
         } catch (SQLException e)
         {
             throw new DataStoreException(e);
@@ -851,7 +897,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             if(!inTransaction)
                 connection.setAutoCommit(false);
 
-            AccountAddress newAddress = createAccount(oldAccount.getOwner(), newName, true, true);
+            AccountAddress newAddress = createAccount(oldAccount.getOwner(), newName, primary, true);
             AbstractSQL.SqlAccount newAccount = getAccount(newAddress.getNumber());
             assert newAccount != null;
 
@@ -860,7 +906,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             ))
             {
                 pst.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
-                pst.setString(2, newAddress.getName());
+                pst.setString(2, newAddress.getNumber().toString());
                 pst.setString(3, account.id);
                 pst.executeUpdate();
             }
@@ -879,7 +925,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                 connection.commit();
             return newAddress;
         }
-        catch (SQLException|DuplicatedKeyException|NullPointerException e)
+        catch (Throwable e)
         {
             if(!inTransaction)
                 try

@@ -37,4 +37,14 @@ public class AccountNotFoundException extends DataBaseException
     {
         return account;
     }
+
+    @Override
+    public String getMessage()
+    {
+        String original = super.getMessage();
+        if(original != null)
+            return account+" "+original;
+        else
+            return account.toString();
+    }
 }
