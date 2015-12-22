@@ -3,6 +3,7 @@ package br.com.gamemods.universalcoinsserver.item;
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.api.UniversalCoinsServerAPI;
 import br.com.gamemods.universalcoinsserver.datastore.AccountAddress;
+import br.com.gamemods.universalcoinsserver.datastore.AccountNotFoundException;
 import br.com.gamemods.universalcoinsserver.datastore.DataBaseException;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
@@ -39,6 +40,8 @@ public class ItemCard extends Item
             player.addChatComponentMessage(new ChatComponentTranslation("item.itemUCCard.balance")
                     .appendText(" " + NumberFormat.getIntegerInstance().format(balance)));
         }
+        catch (AccountNotFoundException ignore)
+        { }
         catch (DataBaseException e)
         {
             e.printStackTrace();
