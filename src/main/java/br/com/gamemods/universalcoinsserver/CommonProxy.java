@@ -1,6 +1,7 @@
 package br.com.gamemods.universalcoinsserver;
 
 import br.com.gamemods.universalcoinsserver.blocks.*;
+import br.com.gamemods.universalcoinsserver.datastore.NbtDB;
 import br.com.gamemods.universalcoinsserver.datastore.SqlDB;
 import br.com.gamemods.universalcoinsserver.item.*;
 import br.com.gamemods.universalcoinsserver.recipe.RecipeEnderCard;
@@ -320,7 +321,8 @@ public class CommonProxy
             prop = source.get(category, "Database Type", 1);
             prop.comment = "Defines how the bank accounts and transactions will be stored\n\n1: properties - A simple file-based implementation that " +
                     "saves the data as raw text. Simple but not reliable.\n" +
-                    "2: sql - Uses an external database software like MySQL or an SQL library like SQLite. (IMPORTANT: The tables aren't created automatically on this version)";
+                    "2: sql - Uses an external database software like MySQL or an SQL library like SQLite. (IMPORTANT: The tables aren't created automatically on this version)\n" +
+                    "3: nbt - Stores data using NBT Keys on world data. This type has limited functionality and is not recommended, use it for compatibility with data from the original mod";
             databaseType = prop.getInt(1);
 
             prop = source.get(category, "SQL URL", "jdbc:mysql://localhost:3306/database_name?autoReconnect=true");
@@ -342,6 +344,8 @@ public class CommonProxy
         {
             if(databaseType == 1)
                 UniversalCoinsServer.cardDb = new SqlDB(DriverManager.getConnection(sqlUrl, sqlUser, sqlPasswd));
+            else if(databaseType == 3)
+                UniversalCoinsServer.cardDb = new NbtDB();
 
             sqlUser = null;
             sqlPasswd = null;
