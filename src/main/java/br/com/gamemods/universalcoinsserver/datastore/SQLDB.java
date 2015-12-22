@@ -1,0 +1,844 @@
+package br.com.gamemods.universalcoinsserver.datastore;
+
+import br.com.gamemods.universalcoinsserver.blocks.PlayerOwned;
+import cpw.mods.fml.common.registry.GameData;
+import net.minecraft.item.ItemStack;
+import net.minecraft.tileentity.TileEntity;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.UUID;
+
+public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
+{
+    public SqlDB(Connection connection)
+    {
+        super(connection);
+    }
+
+    @Nullable
+    @Override
+    protected SqlAccount getAccount(@Nonnull String number) throws DataStoreException
+    {
+        try(PreparedStatement pst = connection.prepareStatement("SELECT number, owner, balance, `primary` FROM accounts WHERE number=?"))
+        {
+            pst.setString(1, number);
+            ResultSet result = pst.executeQuery();
+            if(!result.next())
+                return null;
+
+            return new SqlAccount(result.getString(1), UUID.fromString(result.getString(2)), result.getInt(3), result.getBoolean(4));
+        }
+        catch (SQLException|IllegalArgumentException e)
+        {
+            throw new DataStoreException(e);
+        }
+    }
+
+    @Nullable
+    @Override
+    protected SqlAccount getCustomAccount(@Nonnull String name) throws DataStoreException
+    {
+        try(PreparedStatement pst = connection.prepareStatement(
+                "SELECT ac.number, ac.owner, ac.balance, ac.primary FROM custom_accounts ca INNER JOIN accounts ON number=account WHERE ca.name=? AND terminated IS NULL"
+        ))
+        {
+            pst.setString(1, name);
+            ResultSet result = pst.executeQuery();
+            if(!result.next())
+                return null;
+
+            return new SqlAccount(result.getString(1), UUID.fromString(result.getString(2)), result.getInt(3), result.getBoolean(4));
+        }
+        catch (SQLException e)
+        {
+            throw new DataStoreException(e);
+        }
+    }
+
+    @Override
+    protected void storeTrade(@Nonnull Transaction transaction, @Nullable AbstractSQL.SqlAccount ownerAccount, int ownerIncrement, @Nullable AbstractSQL.SqlAccount userAccount, int userIncrement)
+            throws DataStoreException
+    {
+        try
+        {
+            connection.setAutoCommit(false);
+            if(ownerAccount != null)
+                ownerAccount.incrementBalance(ownerIncrement, null);
+
+            if(userAccount != null)
+                userAccount.incrementBalance(userIncrement, null);
+
+            saveTransaction(transaction);
+            connection.commit();
+        }
+        catch (SQLException e)
+        {
+            try
+            {
+                connection.rollback();
+            } catch (SQLException e1)
+            {
+                e1.printStackTrace();
+            }
+            throw new DataStoreException(e);
+        }
+        finally
+        {
+            try
+            {
+                connection.setAutoCommit(true);
+            }
+            catch (SQLException e)
+            {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public void saveNewMachine(@Nonnull Machine machine) throws DataStoreException
+    {
+        try(PreparedStatement pst = connection.prepareStatement(
+                "INSERT INTO machines(machine_id,dim,x,y,z,block,metadata,tile,owner) " +
+                              "VALUES(     ?    ,  ?,?,?,?,  ?  ,   ?    ,  ? ,  ?  )"))
+                                        // 1       2 3 4 5   6      7       8    9
+        {
+            pst.setString(1, machine.getMachineId().toString());
+            TileEntity machineEntity = machine.getMachineEntity();
+            pst.setNull(2, machineEntity.xCoord);
+            pst.setNull(3, machineEntity.yCoord);
+            pst.setNull(4, machineEntity.zCoord);
+            if(!machineEntity.hasWorldObj())
+            {
+                pst.setNull(5, Types.INTEGER);
+                pst.setNull(6, Types.VARCHAR);
+                pst.setNull(7, Types.INTEGER);
+            }
+            else
+            {
+                pst.setInt(5, machineEntity.getWorldObj().provider.dimensionId);
+                String block = GameData.getBlockRegistry().getNameForObject(machineEntity.getBlockType());
+
+                if(block != null)
+                    pst.setString(6, block);
+                else
+                    pst.setNull(6, Types.VARCHAR);
+
+                pst.setInt(7, machineEntity.getBlockMetadata());
+                pst.setString(8, machineEntity.getClass().getName());
+
+                if(machineEntity instanceof PlayerOwned)
+                {
+                    UUID ownerId = ((PlayerOwned) machineEntity).getOwnerId();
+                    if(ownerId != null)
+                        pst.setString(9, ownerId.toString());
+                    else
+                        pst.setNull(9, Types.VARCHAR);
+                }
+                else
+                    pst.setNull(9, Types.VARCHAR);
+
+                pst.executeUpdate();
+            }
+        }
+        catch (SQLException e)
+        {
+            throw new DataStoreException(e);
+        }
+    }
+
+    private void updateMachine(@Nullable Machine machine) throws DataStoreException
+    {
+        if(machine == null) return;
+        boolean found;
+        try(PreparedStatement pst = connection.prepareStatement("SELECT x FROM machines WHERE machine_id=?"))
+        {
+            pst.setString(1, machine.getMachineId().toString());
+            found = pst.executeQuery().next();
+        }
+        catch (SQLException e)
+        {
+            throw new DataStoreException(e);
+        }
+
+        if(!found)
+            saveNewMachine(machine);
+        else
+        {
+            TileEntity machineEntity = machine.getMachineEntity();
+            boolean worldObj = machineEntity.hasWorldObj();
+            try(PreparedStatement pst = connection.prepareStatement(
+                    "UPDATE machines SET x=?,y=?,z=?"+(worldObj?",dim=?,block=?,metadata=?":"")+",tile=?,owner=?) WHERE machine_id=?"))
+                                        // 1   2   3                  4       5          6         4/7     5/8                6/9
+            {
+                int field = 1;
+                pst.setNull(field++, machineEntity.xCoord);
+                pst.setNull(field++, machineEntity.yCoord);
+                pst.setNull(field++, machineEntity.zCoord);
+                if(worldObj)
+                {
+                    pst.setInt(field++, machineEntity.getWorldObj().provider.dimensionId);
+                    String block = GameData.getBlockRegistry().getNameForObject(machineEntity.getBlockType());
+
+                    if(block != null)
+                        pst.setString(field++, block);
+                    else
+                        pst.setNull(field++, Types.VARCHAR);
+
+                    pst.setInt(field++, machineEntity.getBlockMetadata());
+                    pst.setString(field++, machineEntity.getClass().getName());
+
+                    if(machineEntity instanceof PlayerOwned)
+                    {
+                        UUID ownerId = ((PlayerOwned) machineEntity).getOwnerId();
+                        if(ownerId != null)
+                            pst.setString(field++, ownerId.toString());
+                        else
+                            pst.setNull(field++, Types.VARCHAR);
+                    }
+                    else
+                        pst.setNull(field++, Types.VARCHAR);
+
+                    pst.setString(field, machine.getMachineId().toString());
+
+                    pst.executeUpdate();
+                }
+            }
+            catch (SQLException e)
+            {
+                throw new DataStoreException(e);
+            }
+        }
+    }
+
+    private void addBlockOperatorData(PreparedStatement pst, BlockOperator blockOperator) throws SQLException
+    {
+        int field = 1;
+        pst.setInt(field++, blockOperator.getX());
+        pst.setInt(field++, blockOperator.getY());
+        pst.setInt(field++, blockOperator.getZ());
+        Integer num = blockOperator.getDim();
+        if(num == null)
+            pst.setNull(field++, Types.INTEGER);
+        else
+            pst.setInt(field++, num);
+        String blockId = blockOperator.getBlockId();
+        if(blockId == null)
+            pst.setNull(field++, Types.VARCHAR);
+        else
+            pst.setString(field++, blockId);
+        num = blockOperator.getBlockMeta();
+        if(null == num)
+            pst.setNull(field++, Types.INTEGER);
+        else
+            pst.setInt(field++, num);
+        UUID owner = blockOperator.getOwner();
+        if(owner == null)
+            pst.setNull(field++, Types.VARCHAR);
+        else
+            pst.setString(field++, owner.toString());
+        if(blockOperator instanceof MachineOperator)
+        {
+            MachineOperator machine = (MachineOperator) blockOperator;
+            pst.setString(field++, machine.getMachine().getMachineId().toString());
+            pst.setString(field, machine.getMachine().getMachineEntity().getClass().getName());
+        }
+        else
+        {
+            pst.setNull(field++, Types.VARCHAR);
+            pst.setNull(field, Types.VARCHAR);
+        }
+    }
+
+    private int registerCoinSource(Transaction.CoinSource coinSource) throws SQLException, DataStoreException
+    {
+        try(PreparedStatement pst = connection.prepareStatement(
+                "INSERT INTO coin_source(before,after,type,machine,account,card_item,card_damage,card_amount," +
+                                        // 1   ,  2  ,  3 ,  4    ,   5   ,     6   ,   7       ,    8
+                        "card_nbt,player_operator,block_operator) " +
+                        //  9    ,       10      ,     11
+                    "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                PreparedStatement.RETURN_GENERATED_KEYS
+        ))
+        {
+            pst.setInt(1, coinSource.getBalanceBefore());
+            pst.setInt(2, coinSource.getBalanceAfter());
+            if(coinSource instanceof Transaction.MachineCoinSource)
+            {
+                pst.setString(3, "machine");
+                pst.setString(4, ((Transaction.MachineCoinSource) coinSource).getMachine().getMachineId().toString());
+            }
+            else
+            {
+                pst.setNull(4, Types.CHAR);
+            }
+
+            if(coinSource instanceof Transaction.CardCoinSource)
+            {
+                pst.setString(3, "card");
+                Transaction.CardCoinSource card = (Transaction.CardCoinSource) coinSource;
+                pst.setString(5, card.getAccountAddress().getNumber().toString());
+                ItemStack stack = card.getCard();
+                if(stack != null)
+                {
+                    String type = GameData.getItemRegistry().getNameForObject(stack.getItem());
+                    if(type == null) type = stack.getItem().getClass().getName();
+                    pst.setString(6, type);
+                    pst.setInt(7, stack.getItemDamage());
+                    pst.setInt(8, stack.stackSize);
+                    if(stack.stackTagCompound != null)
+                        pst.setString(9, stack.stackTagCompound.toString());
+                    else
+                        pst.setNull(9, Types.VARCHAR);
+                }
+                else
+                {
+                    pst.setNull(6, Types.VARCHAR);
+                    pst.setNull(7, Types.INTEGER);
+                    pst.setNull(8, Types.INTEGER);
+                    pst.setNull(9, Types.VARCHAR);
+                }
+            }
+            else
+            {
+                pst.setNull(5, Types.VARCHAR);
+                pst.setNull(6, Types.VARCHAR);
+                pst.setNull(7, Types.INTEGER);
+                pst.setNull(8, Types.INTEGER);
+                pst.setNull(9, Types.VARCHAR);
+            }
+
+            if(coinSource instanceof Transaction.InventoryCoinSource)
+            {
+                pst.setString(3, "inventory");
+                Operator operator = ((Transaction.InventoryCoinSource) coinSource).getOperator();
+                if(operator instanceof PlayerOperator)
+                    pst.setString(10, ((PlayerOperator) operator).getPlayerId().toString());
+                else
+                    pst.setNull(10, Types.VARCHAR);
+
+                if(operator instanceof BlockOperator)
+                    pst.setInt(11, saveBlockOperator((BlockOperator) operator));
+                else
+                    pst.setNull(11, Types.INTEGER);
+            }
+
+            pst.executeUpdate();
+            ResultSet generatedKeys = pst.getGeneratedKeys();
+            if(!generatedKeys.next())
+                throw new DataStoreException("The coin_source ID wasnt returned for "+coinSource);
+            return generatedKeys.getInt(1);
+        }
+    }
+
+    private int saveBlockOperator(BlockOperator blockOperator) throws SQLException, DataStoreException
+    {
+        try(PreparedStatement pst = connection.prepareStatement(
+                "SELECT operator_id FROM block_operators WHERE " +
+                        "x=? AND y=? AND z=? AND dim=? AND block_id=? AND block_meta =? " +
+                        "AND owner=? AND machine_id=? AND machine_type=?"
+        ))
+        {
+            addBlockOperatorData(pst, blockOperator);
+            ResultSet result = pst.executeQuery();
+            if(result.next())
+                return result.getInt(1);
+        }
+
+        try(PreparedStatement pst = connection.prepareStatement(
+                "INSERT INTO block_operators(x,y,z,dim,block_id,block_meta,owner,machine_id,machine_type) " +
+                        "VALUES(?,?,?,?,?,?,?,?,?)",
+                PreparedStatement.RETURN_GENERATED_KEYS
+        ))
+        {
+            addBlockOperatorData(pst, blockOperator);
+            pst.executeUpdate();
+            ResultSet generatedKeys = pst.getGeneratedKeys();
+            if(!generatedKeys.next())
+                throw new DataStoreException("Failed to retrieve generated key for "+blockOperator);
+            return generatedKeys.getInt(1);
+        }
+    }
+
+    @Override
+    public void saveTransaction(@Nonnull Transaction transaction) throws DataStoreException
+    {
+        updateMachine(transaction.getMachine());
+        try
+        {
+            connection.setAutoCommit(false);
+
+            Operator operator = transaction.getOperator();
+            int blockOperatorId;
+            if(operator instanceof BlockOperator)
+                blockOperatorId = saveBlockOperator((BlockOperator) operator);
+            else
+                blockOperatorId = -1;
+
+            Transaction.CoinSource coinSource = transaction.getUserCoinSource();
+            int userCoinSource=-1, ownerCoinSource=-1;
+            if(coinSource != null)
+                userCoinSource = registerCoinSource(coinSource);
+            coinSource = transaction.getOwnerCoinSource();
+            if(coinSource != null)
+                ownerCoinSource = registerCoinSource(coinSource);
+
+
+            try(PreparedStatement pst = connection.prepareStatement(
+                    "INSERT INTO transactions(transaction_id,time,machine,player_operator,block_operator," +
+                            "product_item,product_damage,product_amount,product_nbt,trade_item,trade_damage,trade_amount,trade_nbt," +
+                            "operation,infinite,quantity,price,total_price,user_coinsource,owner_coinsource) " +
+                            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            ))
+            {
+                int field = 1;
+                pst.setString(field++, transaction.getId().toString());
+                pst.setTimestamp(field++, new Timestamp(transaction.getTime()));
+                Machine machine = transaction.getMachine();
+                if(machine != null)
+                    pst.setString(field++, machine.getMachineId().toString());
+                else
+                    pst.setNull(field++, Types.CHAR);
+                if(operator instanceof PlayerOperator)
+                {
+                    pst.setString(field++, ((PlayerOperator) operator).getPlayerId().toString());
+                    pst.setNull(field++, Types.INTEGER);
+                }
+                else if(operator instanceof BlockOperator)
+                {
+                    pst.setNull(field++, Types.CHAR);
+                    pst.setInt(field++, blockOperatorId);
+                }
+                ItemStack stack = transaction.getProduct();
+                if(stack != null)
+                {
+                    String type = GameData.getItemRegistry().getNameForObject(stack.getItem());
+                    if(type == null) type = stack.getItem().getClass().getName();
+                    pst.setString(field++, type);
+                    pst.setInt(field++, stack.getItemDamage());
+                    pst.setInt(field++, stack.stackSize);
+                    if(stack.stackTagCompound != null)
+                        pst.setString(field++, stack.stackTagCompound.toString());
+                    else
+                        pst.setNull(field++, Types.VARCHAR);
+                }
+                stack = transaction.getTrade();
+                if(stack != null)
+                {
+                    String type = GameData.getItemRegistry().getNameForObject(stack.getItem());
+                    if(type == null) type = stack.getItem().getClass().getName();
+                    pst.setString(field++, type);
+                    pst.setInt(field++, stack.getItemDamage());
+                    pst.setInt(field++, stack.stackSize);
+                    if(stack.stackTagCompound != null)
+                        pst.setString(field++, stack.stackTagCompound.toString());
+                    else
+                        pst.setNull(field++, Types.VARCHAR);
+                }
+                pst.setString(field++, transaction.getOperation().name());
+                pst.setBoolean(field++, transaction.isInfiniteMachine());
+                pst.setInt(field++, transaction.getQuantity());
+                pst.setInt(field++, transaction.getPrice());
+                pst.setInt(field++, transaction.getTotalPrice());
+                if(userCoinSource > -1)
+                    pst.setInt(field++, userCoinSource);
+                else
+                    pst.setNull(field++, Types.INTEGER);
+
+                if(ownerCoinSource > -1)
+                    pst.setInt(field, ownerCoinSource);
+                else
+                    pst.setNull(field, Types.INTEGER);
+
+                pst.executeUpdate();
+                connection.commit();
+            }
+
+        }
+        catch (SQLException e)
+        {
+            try
+            {
+                connection.rollback();
+            }
+            catch (Exception e1)
+            {
+                e1.printStackTrace();
+            }
+            throw new DataStoreException(e);
+        }
+        finally
+        {
+            try
+            {
+                connection.setAutoCommit(true);
+            } catch (SQLException e)
+            {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Nonnull
+    @Override
+    public PlayerData getPlayerData(@Nonnull UUID playerUID) throws DataStoreException
+    {
+        try
+        {
+            AccountAddress primary;
+            try(PreparedStatement pst = connection.prepareStatement(
+                    "SELECT primary_account, ac.name,ac.owner " +
+                        "FROM user_data LEFT JOIN accounts ac ON ac.number=primary_account " +
+                        "WHERE player_id=?"
+            ))
+            {
+                pst.setString(1, playerUID.toString());
+                ResultSet result = pst.executeQuery();
+                if(!result.next())
+                    primary = null;
+                else
+                    primary = new AccountAddress(result.getString(1), result.getString(2), UUID.fromString(result.getString(3)));
+            }
+
+            ArrayList<AccountAddress> customAccounts = new ArrayList<>();
+            try(PreparedStatement pst = connection.prepareStatement(
+                    "SELECT ac.number, ac.name, ac.owner " +
+                        "FROM custom_accounts ca INNER JOIN accounts ac ON ac.number=ca.account " +
+                        "WHERE ac.owner=?"
+            ))
+            {
+                pst.setString(1, playerUID.toString());
+                ResultSet result = pst.executeQuery();
+                while (result.next())
+                    customAccounts.add(new AccountAddress(result.getString(1), result.getString(2), UUID.fromString(result.getString(3))));
+            }
+
+            return new PlayerData(Integer.MIN_VALUE, playerUID, primary, customAccounts);
+        }
+        catch (SQLException|IllegalArgumentException e)
+        {
+            throw new DataStoreException(e);
+        }
+    }
+
+    @Nonnull
+    @Override
+    public AccountAddress createPrimaryAccount(@Nonnull UUID playerUID, @Nonnull String name) throws DataStoreException, DuplicatedKeyException
+    {
+        return createAccount(playerUID, name, true, false);
+    }
+
+    @Nonnull
+    private AccountAddress createAccount(@Nonnull UUID playerUID, @Nonnull String name, boolean primary, boolean transference) throws DataStoreException, DuplicatedKeyException
+    {
+        boolean inTransaction;
+        boolean deleteOldReference = false;
+        try
+        {
+            inTransaction = !connection.getAutoCommit();
+
+            if(primary)
+            {
+                if(!transference)
+                {
+                    try(PreparedStatement pst = connection.prepareStatement(
+                            "SELECT primary_account, terminated " +
+                                    "FROM user_data LEFT JOIN accounts ON number=primary_account " +
+                                    "WHERE player_id=?"
+                    ))
+                    {
+                        pst.setString(1, playerUID.toString());
+                        ResultSet result = pst.executeQuery();
+                        if(result.next())
+                        {
+                            String account = result.getString(1);
+                            Timestamp terminated = result.getTimestamp(2);
+                            if(account != null)
+                            {
+                                if(terminated == null)
+                                    throw new DuplicatedKeyException(playerUID+" already have a primary account: "+account);
+                                else
+                                    deleteOldReference = true;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                try(PreparedStatement pst = connection.prepareStatement(
+                        "SELECT account, terminated " +
+                            "FROM custom_accounts ca LEFT JOIN accounts ON number=account " +
+                            "WHERE ca.name=?"
+                ))
+                {
+                    pst.setString(1, name);
+                    ResultSet resultSet = pst.executeQuery();
+                    if(resultSet.next())
+                    {
+                        String account = resultSet.getString(1);
+                        Timestamp terminated = resultSet.getTimestamp(2);
+                        if(account != null)
+                        {
+                            if(terminated == null)
+                                throw new DuplicatedKeyException(name + " is already registered for: " + account);
+                            else
+                                deleteOldReference = true;
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e)
+        {
+            throw new DataStoreException(e);
+        }
+
+        try
+        {
+            if(!inTransaction)
+                connection.setAutoCommit(false);
+
+            String number;
+            try(PreparedStatement pst = connection.prepareStatement(
+                    "SELECT owner FROM accounts WHERE number=?"
+            ))
+            {
+                do
+                {
+                    number = generateAccountNumber();
+                    pst.setString(1, number);
+                } while (pst.executeQuery().next());
+            }
+
+            try (PreparedStatement pst = connection.prepareStatement(
+                    "INSERT INTO accounts(number,owner,name,primary) VALUES(?,?,?,?)"
+            ))
+            {
+                pst.setString(1, number);
+                pst.setString(2, playerUID.toString());
+                pst.setString(3, name);
+                pst.setBoolean(4, primary);
+                pst.executeUpdate();
+            }
+
+            if(primary)
+            {
+                try(PreparedStatement pst = connection.prepareStatement(
+                        "UPDATE user_data SET primary_account=? WHERE player_id=?"
+                ))
+                {
+                    pst.setString(1, number);
+                    pst.setString(2, playerUID.toString());
+                    pst.executeUpdate();
+                }
+            }
+            else
+            {
+                if(deleteOldReference)
+                    try(PreparedStatement pst = connection.prepareStatement(
+                            "DELETE FROM custom_accounts WHERE name=?"
+                    ))
+                    {
+                        pst.setString(1, name);
+                        pst.executeUpdate();
+                    }
+
+                try(PreparedStatement pst = connection.prepareStatement(
+                        "INSERT INTO custom_accounts(name,account) VALUES(?,?)"
+                ))
+                {
+                    pst.setString(1, name);
+                    pst.setString(2, number);
+                    pst.executeUpdate();
+                }
+            }
+
+            connection.commit();
+            return new AccountAddress(number, name, playerUID);
+        }
+        catch (SQLException e)
+        {
+            try
+            {
+                connection.rollback();
+            }
+            catch (SQLException e1)
+            {
+                e1.printStackTrace();
+            }
+            throw new DataStoreException(e);
+        }
+        finally
+        {
+            try
+            {
+                connection.setAutoCommit(true);
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Nullable
+    @Override
+    public AccountAddress getCustomAccountByName(@Nonnull String customAccountName) throws DataStoreException
+    {
+        try(PreparedStatement pst = connection.prepareStatement(
+                "SELECT ac.number, ac.name, ac.owner FROM custom_accounts ca INNER JOIN accounts ON number=account AND ca.name=?"
+        ))
+        {
+            pst.setString(1, customAccountName);
+            ResultSet result = pst.executeQuery();
+            if(!result.next())
+                return null;
+            return new AccountAddress(result.getString(1), result.getString(2), UUID.fromString(result.getString(3)));
+        }
+        catch (SQLException|IllegalArgumentException e)
+        {
+            throw new DataStoreException(e);
+        }
+    }
+
+    @Nonnull
+    @Override
+    public AccountAddress createCustomAccount(@Nonnull UUID playerUID, @Nonnull String customAccountName) throws DataStoreException, DuplicatedKeyException
+    {
+        return createAccount(playerUID, customAccountName, false, false);
+    }
+
+    @Nonnull
+    @Override
+    public AccountAddress transferAccount(@Nonnull AccountAddress origin, @Nonnull String destiny, @Nullable Machine machine, @Nullable Operator operator)
+            throws DataStoreException, AccountNotFoundException, DuplicatedKeyException
+    {
+        AccountAddress customAccountByName = getCustomAccountByName(origin.getName());
+        if(customAccountByName == null)
+            throw new AccountNotFoundException(origin);
+
+        return transfer(origin, destiny, machine, operator);
+    }
+
+    @Nonnull
+    @Override
+    public AccountAddress transferPrimaryAccount(@Nonnull AccountAddress primaryAccount, @Nonnull String newName, @Nullable Machine machine, @Nullable Operator operator)
+            throws DataStoreException, AccountNotFoundException
+    {
+        try
+        {
+            connection.setAutoCommit(false);
+            AccountAddress newAccount = transfer(primaryAccount, newName, machine, operator);
+            try(PreparedStatement pst = connection.prepareStatement(
+                    "UPDATE user_data SET primary_account=? WHERE player_id=?"
+            ))
+            {
+                pst.setString(1, newAccount.getNumber().toString());
+                pst.setString(2, newAccount.getOwner().toString());
+                pst.executeUpdate();
+            }
+
+            connection.commit();
+            return newAccount;
+        }
+        catch (SQLException e)
+        {
+            try
+            {
+                connection.rollback();
+            } catch (SQLException e1)
+            {
+                e1.printStackTrace();
+            }
+            throw new DataStoreException(e);
+        }
+        finally
+        {
+            try
+            {
+                connection.setAutoCommit(true);
+            } catch (SQLException e)
+            {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Nonnull
+    private AccountAddress transfer(@Nonnull AccountAddress oldAccount, @Nonnull String newName, @Nullable Machine machine, @Nullable Operator operator)
+            throws DataStoreException, AccountNotFoundException
+    {
+        AbstractSQL.SqlAccount account = getAccount(oldAccount.getNumber());
+        if(account == null) throw new AccountNotFoundException(oldAccount);
+        int balance = account.getBalance();
+
+        boolean inTransaction;
+        try
+        {
+            inTransaction = connection.getAutoCommit();
+        } catch (SQLException e)
+        {
+            throw new DataStoreException(e);
+        }
+
+        try
+        {
+            if(!inTransaction)
+                connection.setAutoCommit(false);
+
+            AccountAddress newAddress = createAccount(oldAccount.getOwner(), newName, true, true);
+            AbstractSQL.SqlAccount newAccount = getAccount(newAddress.getNumber());
+            assert newAccount != null;
+
+            try(PreparedStatement pst = connection.prepareStatement(
+                    "UPDATE accounts SET balance=0, terminated=?, transferred=? WHERE number=?"
+            ))
+            {
+                pst.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
+                pst.setString(2, newAddress.getName());
+                pst.setString(3, account.id);
+                pst.executeUpdate();
+            }
+
+            newAccount.incrementBalance(balance, null);
+
+
+            Transaction transaction = new Transaction(machine, Transaction.Operation.TRANSFER_ACCOUNT, operator,
+                    new Transaction.CardCoinSource(null, oldAccount, balance, 0),
+                    new Transaction.CardCoinSource(null, newAddress, 0, balance), null);
+
+
+            saveTransaction(transaction);
+
+            if(!inTransaction)
+                connection.commit();
+            return newAddress;
+        }
+        catch (SQLException|DuplicatedKeyException|NullPointerException e)
+        {
+            if(!inTransaction)
+                try
+                {
+                    connection.rollback();
+                } catch (SQLException e1)
+                {
+                    e1.printStackTrace();
+                }
+            throw new DataStoreException(e);
+        }
+        finally
+        {
+            if(!inTransaction)
+                try
+                {
+                    connection.setAutoCommit(true);
+                } catch (SQLException e)
+                {
+                    e.printStackTrace();
+                }
+        }
+    }
+}
