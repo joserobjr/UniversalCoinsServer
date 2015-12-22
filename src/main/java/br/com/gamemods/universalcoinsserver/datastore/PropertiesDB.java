@@ -83,7 +83,7 @@ public class PropertiesDB implements CardDataBase
         return loadProperties(new File(accounts, account+".properties"));
     }
 
-    private void saveAccount(String account, Properties properties) throws DataBaseException
+    private void saveAccount(String account, Properties properties) throws DataStoreException
     {
         File accountFile = new File(accounts, account+".properties");
         try(FileWriter writer = new FileWriter(accountFile))
@@ -92,7 +92,7 @@ public class PropertiesDB implements CardDataBase
         }
         catch (Exception e)
         {
-            throw new DataBaseException(e);
+            throw new DataStoreException(e);
         }
     }
 
@@ -1099,6 +1099,19 @@ public class PropertiesDB implements CardDataBase
             }
         }
         return map;
+    }
+
+    @Override
+    public AccountAddress renamePrimaryAccount(AccountAddress primaryAccount, String playerName) throws DataStoreException, AccountNotFoundException
+    {
+        Properties properties = loadAccount(primaryAccount.getNumber().toString());
+        if(properties == null) throw new AccountNotFoundException(primaryAccount);
+
+        incrementInt(properties, "version", 1, Integer.MIN_VALUE);
+        properties.setProperty("name", playerName);
+        saveAccount(primaryAccount.getNumber().toString(), properties);
+
+        return new AccountAddress(primaryAccount.getNumber(), playerName, primaryAccount.getOwner());
     }
 
     @Override

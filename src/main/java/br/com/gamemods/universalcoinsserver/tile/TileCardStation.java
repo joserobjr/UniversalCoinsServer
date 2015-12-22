@@ -566,6 +566,11 @@ public class TileCardStation extends TileTransactionMachine
                         state.primaryAccount = UniversalCoinsServer.cardDb.createPrimaryAccount(state.playerUID, state.playerName);
                         state.cardAccount = state.primaryAccount;
                     }
+                    else if(state.primaryAccount.getName().equals(state.primaryAccount.getNumber()) && !state.playerName.equals(state.primaryAccount.getNumber()))
+                    {
+                        state.primaryAccount = UniversalCoinsServer.cardDb.renamePrimaryAccount(state.primaryAccount, state.playerName);
+                        state.cardAccount = state.primaryAccount;
+                    }
                     inventory[SLOT_CARD] = UniversalCoinsServerAPI.createCard(state.primaryAccount, false);
                     markDirty();
                     state.accountBalance = 0;

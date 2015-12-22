@@ -994,6 +994,28 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
     }
 
     @Override
+    public AccountAddress renamePrimaryAccount(AccountAddress primaryAccount, String playerName) throws DataStoreException, AccountNotFoundException
+    {
+        AbstractSQL.SqlAccount account = getAccount(primaryAccount);
+        if(account == null) throw new AccountNotFoundException(primaryAccount);
+
+        try(PreparedStatement pst = connection.prepareStatement(
+                "UPDATE `accounts` SET `name`=? WHERE `number`=? AND `primary`=1 AND `terminated` IS NULL"
+        ))
+        {
+            pst.setString(1, playerName);
+            pst.setString(2, primaryAccount.getNumber().toString());
+            pst.executeUpdate();
+        }
+        catch (SQLException e)
+        {
+            throw new DataStoreException(e);
+        }
+
+        return new AccountAddress(primaryAccount.getNumber(), playerName, primaryAccount.getOwner());
+    }
+
+    @Override
     public void importData(CardDataBase original) throws DataStoreException
     {
         try

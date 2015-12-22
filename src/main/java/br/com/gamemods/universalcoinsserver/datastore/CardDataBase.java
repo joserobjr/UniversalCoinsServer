@@ -115,4 +115,6 @@ public interface CardDataBase
     Map<AccountAddress,Integer> getAllAccountsBalance() throws DataStoreException;
 
     void importData(CardDataBase original) throws DataStoreException;
+
+    AccountAddress renamePrimaryAccount(AccountAddress primaryAccount, String playerName) throws DataStoreException, AccountNotFoundException;
 }

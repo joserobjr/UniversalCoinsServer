@@ -417,6 +417,17 @@ public class NbtDB extends AbstractDB<AbstractDB.Account>
     }
 
     @Override
+    public AccountAddress renamePrimaryAccount(AccountAddress primaryAccount, String playerName) throws DataStoreException, AccountNotFoundException
+    {
+        AbstractDB.Account account = getAccount(primaryAccount.getNumber());
+        if(account == null) throw new AccountNotFoundException(primaryAccount);
+
+        // Unsupported
+
+        return primaryAccount;
+    }
+
+    @Override
     public void importData(CardDataBase original) throws DataStoreException
     {
         throw new DataStoreException(new UnsupportedOperationException());
