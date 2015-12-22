@@ -1,6 +1,7 @@
 package br.com.gamemods.universalcoinsserver;
 
 import br.com.gamemods.universalcoinsserver.api.UniversalCoinsServerAPI;
+import br.com.gamemods.universalcoinsserver.datastore.AccountNotFoundException;
 import br.com.gamemods.universalcoinsserver.datastore.DataBaseException;
 import br.com.gamemods.universalcoinsserver.datastore.PlayerOperator;
 import br.com.gamemods.universalcoinsserver.datastore.Transaction;
@@ -30,6 +31,7 @@ public class PlayerPickupEventHandler
         for(ItemStack stack: event.entityPlayer.inventory.mainInventory)
         {
             if(stack == null || stack.getItem() != UniversalCoinsServer.proxy.itemEnderCard || stack.stackTagCompound == null
+                    || stack.stackTagCompound.getBoolean("DisablePickup")
                     || !UniversalCoinsServerAPI.canCardBeUsedBy(stack, event.entityPlayer))
                 continue;
 
@@ -60,6 +62,11 @@ public class PlayerPickupEventHandler
 
                 event.setCanceled(true);
                 event.item.setDead();
+                return;
+            }
+            catch (AccountNotFoundException e)
+            {
+                stack.stackTagCompound.setBoolean("DisablePickup", true);
                 return;
             }
             catch (DataBaseException e)
