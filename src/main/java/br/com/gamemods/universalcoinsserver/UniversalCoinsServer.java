@@ -20,6 +20,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.SQLException;
 
 @Mod(modid = "universalcoins", name = "Universal Coins Server", version = "1.7.10-1.6.38-gamemods")
 @SideOnly(Side.SERVER)
@@ -36,7 +37,7 @@ public class UniversalCoinsServer
     public static CardDataBase cardDb;
 
     @Mod.EventHandler
-    public void preInit(FMLPreInitializationEvent event) throws IOException
+    public void preInit(FMLPreInitializationEvent event) throws IOException, SQLException
     {
         proxy.configs = proxy.new ConfigLoader(new Configuration(event.getSuggestedConfigurationFile()));
         proxy.configs.load();

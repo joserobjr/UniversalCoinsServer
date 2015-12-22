@@ -1,6 +1,7 @@
 package br.com.gamemods.universalcoinsserver;
 
 import br.com.gamemods.universalcoinsserver.blocks.*;
+import br.com.gamemods.universalcoinsserver.datastore.SqlDB;
 import br.com.gamemods.universalcoinsserver.item.*;
 import br.com.gamemods.universalcoinsserver.recipe.RecipeEnderCard;
 import br.com.gamemods.universalcoinsserver.recipe.RecipePlankTextureChange;
@@ -18,6 +19,8 @@ import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
 import net.minecraftforge.oredict.RecipeSorter;
 
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -73,7 +76,7 @@ public class CommonProxy
 
         ConfigLoader(Configuration source){ this.source = source; }
 
-        void load()
+        void load() throws SQLException
         {
             source.load();
 
@@ -302,6 +305,21 @@ public class CommonProxy
             prop = source.get(category, "Chest Coin Stack Maximum", 2);
             prop.comment = "The maximum stack size spawned on the chest";
             chestMaxStack = Math.max(1, Math.min(prop.getInt(64), 64));
+
+            // Database
+            category = "Database";
+            prop = source.get(category, "Database Type", 1);
+            prop.comment = "Defines how the bank accounts and transactions will be stored\n\n1: properties - A simple file-based implementation that " +
+                    "saves the data as raw text. Simple but not reliable.\n" +
+                    "2: sql - Uses an external database software like MySQL or an SQL library like SQLite. (IMPORTANT: The tables aren't created automatically on this version)";
+            int databaseType = prop.getInt(1);
+
+            prop = source.get(category, "SQL URL", "mysql://user:password@localhost/database_name?autoReconnect=true");
+            prop.comment = "The URL for the SQL server";
+            String url = prop.getString();
+
+            if(databaseType == 1)
+                UniversalCoinsServer.cardDb = new SqlDB(DriverManager.getConnection(url));
 
             this.source.save();
         }

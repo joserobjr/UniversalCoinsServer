@@ -4,16 +4,22 @@ import br.com.gamemods.universalcoinsserver.blocks.PlayerOwned;
 import cpw.mods.fml.common.registry.GameData;
 import net.minecraft.tileentity.TileEntity;
 
+import javax.annotation.Nullable;
 import java.util.UUID;
 
-public class BlockOperator implements Operator
+public abstract class BlockOperator implements Operator
 {
-    private final int x, y, z, dim;
+    private final int x, y, z;
+    @Nullable
+    private final Integer dim;
+    @Nullable
     private final String blockId;
-    private final int blockMeta;
+    @Nullable
+    private final Integer blockMeta;
+    @Nullable
     private final UUID owner;
 
-    public BlockOperator(int x, int y, int z, int dim, String blockId, int blockMeta, UUID owner)
+    public BlockOperator(int x, int y, int z, @Nullable Integer dim, @Nullable String blockId, @Nullable Integer blockMeta, @Nullable UUID owner)
     {
         this.blockId = blockId;
         this.x = x;
@@ -29,30 +35,43 @@ public class BlockOperator implements Operator
         this.x = tileEntity.xCoord;
         this.y = tileEntity.yCoord;
         this.z = tileEntity.zCoord;
-        this.dim = tileEntity.getWorldObj().provider.dimensionId;
-        this.blockId = GameData.getBlockRegistry().getNameForObject(tileEntity.getBlockType());
-        this.blockMeta = tileEntity.getBlockMetadata();
+        if(tileEntity.hasWorldObj())
+        {
+            this.dim = tileEntity.getWorldObj().provider.dimensionId;
+            this.blockId = GameData.getBlockRegistry().getNameForObject(tileEntity.getBlockType());
+            this.blockMeta = tileEntity.getBlockMetadata();
+        }
+        else
+        {
+            this.dim = null;
+            this.blockId = null;
+            this.blockMeta = null;
+        }
         if(tileEntity instanceof PlayerOwned)
             this.owner = ((PlayerOwned) tileEntity).getOwnerId();
         else
             this.owner = null;
     }
 
+    @Nullable
     public String getBlockId()
     {
         return blockId;
     }
 
-    public int getBlockMeta()
+    @Nullable
+    public Integer getBlockMeta()
     {
         return blockMeta;
     }
 
-    public int getDim()
+    @Nullable
+    public Integer getDim()
     {
         return dim;
     }
 
+    @Nullable
     public UUID getOwner()
     {
         return owner;

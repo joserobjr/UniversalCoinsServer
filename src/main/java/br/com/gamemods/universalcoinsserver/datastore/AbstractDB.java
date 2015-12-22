@@ -10,7 +10,7 @@ import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.UUID;
 
-public abstract class AbstractDB implements CardDataBase
+public abstract class AbstractDB<Acc extends AbstractDB.Account> implements CardDataBase
 {
     protected int maxAccountValue = Integer.MAX_VALUE;
 
@@ -19,12 +19,6 @@ public abstract class AbstractDB implements CardDataBase
         final String id;
         final UUID owner;
         int balance;
-
-        public Account(String id, UUID owner)
-        {
-            this.id = id;
-            this.owner = owner;
-        }
 
         public Account(String id, UUID owner, int balance)
         {
@@ -45,14 +39,23 @@ public abstract class AbstractDB implements CardDataBase
         }
     }
 
-    @Nullable
-    protected abstract Account getAccount(@Nonnull String number) throws DataStoreException;
+    protected String generateAccountNumber()
+    {
+        String str = Long.toString((long) (Math.floor(Math.random() * 99999999999L) + 11111111111L));
+        return str.substring(0,3)+"."+str.substring(3,6)+"."+str.substring(6,9)+"-"+str.substring(9,11);
+    }
 
-    protected Account getAccount(@Nullable Object account) throws DataStoreException
+    @Nullable
+    protected abstract Acc getAccount(@Nonnull String number) throws DataStoreException;
+
+    protected Acc getAccount(@Nullable Object account) throws DataStoreException
     {
         String number = getAccountNumber(account);
         return number == null? null : getAccount(number);
     }
+
+    @Nullable
+    protected abstract Acc getCustomAccount(@Nonnull String name) throws DataStoreException;
 
     @Nullable
     protected String getAccountNumber(@Nullable Object account)
@@ -72,14 +75,14 @@ public abstract class AbstractDB implements CardDataBase
     @Override
     public UUID getAccountOwner(@Nonnull Object account) throws DataStoreException
     {
-        Account acc = getAccount(account);
+        Acc acc = getAccount(account);
         return acc == null? null : acc.owner;
     }
 
     @Override
     public int getAccountBalance(@Nonnull Object account) throws DataStoreException, AccountNotFoundException
     {
-        Account acc = getAccount(account);
+        Acc acc = getAccount(account);
         if(acc == null) throw new AccountNotFoundException(account);
         return acc.getBalance();
     }
@@ -99,7 +102,7 @@ public abstract class AbstractDB implements CardDataBase
     @Override
     public int canDeposit(@Nonnull Object account, int coins) throws DataStoreException, AccountNotFoundException
     {
-        Account acc = getAccount(account);
+        Acc acc = getAccount(account);
         if(acc == null) throw new AccountNotFoundException(account);
         return (int)(maxAccountValue - (acc.getBalance() + (long)coins));
     }
@@ -107,7 +110,7 @@ public abstract class AbstractDB implements CardDataBase
     @Override
     public int depositToAccount(@Nonnull Object account, @Nullable Collection<ItemStack> coins, @Nonnull Transaction transaction) throws DataStoreException, AccountNotFoundException
     {
-        Account acc = getAccount(account);
+        Acc acc = getAccount(account);
         if(acc == null) throw new AccountNotFoundException(account);
 
         if(coins == null || coins.isEmpty())
@@ -160,7 +163,7 @@ public abstract class AbstractDB implements CardDataBase
     @Override
     public int depositToAccount(@Nonnull Object account, @Nullable ItemStack stack, @Nonnull Transaction transaction) throws DataStoreException, AccountNotFoundException
     {
-        Account acc = getAccount(account);
+        Acc acc = getAccount(account);
         if(acc == null) throw new AccountNotFoundException(account);
 
         Item item;
@@ -195,7 +198,7 @@ public abstract class AbstractDB implements CardDataBase
         if(coins < 0)
             throw new IllegalArgumentException("coins: "+coins);
 
-        Account acc = getAccount(account);
+        Acc acc = getAccount(account);
         if(acc == null) throw new AccountNotFoundException(account);
         // Will be negative if the final account balance bypasses the maximum value
         long valueAboveInverted = maxAccountValue - (acc.getBalance() + (long)coins);
@@ -214,7 +217,7 @@ public abstract class AbstractDB implements CardDataBase
     @Override
     public int takeFromAccount(@Nonnull Object account, int amount, @Nonnull Transaction transaction) throws DataStoreException, AccountNotFoundException, OutOfCoinsException
     {
-        Account acc = getAccount(account);
+        Acc acc = getAccount(account);
         if(acc == null) throw new AccountNotFoundException(account);
 
         int afterIncrement = acc.balance - amount;
@@ -231,7 +234,7 @@ public abstract class AbstractDB implements CardDataBase
     {
         Transaction.CoinSource ownerCoinSource = transaction.getOwnerCoinSource();
         Transaction.CoinSource userCoinSource = transaction.getUserCoinSource();
-        Account ownerAccount = null, userAccount = null;
+        Acc ownerAccount = null, userAccount = null;
         long ownerIncrement = 0, userIncrement = 0;
 
         if(ownerCoinSource instanceof Transaction.CardCoinSource)
@@ -259,9 +262,9 @@ public abstract class AbstractDB implements CardDataBase
             if(result > maxAccountValue) throw new DataStoreException("Final balance above the limit. Balance: "+balance+" Increment:"+userIncrement+" Limit:"+maxAccountValue);
         }
 
-        store(transaction, ownerAccount, ownerIncrement, userAccount, userIncrement);
+        storeTrade(transaction, ownerAccount, (int)ownerIncrement, userAccount, (int)userIncrement);
     }
 
-    protected abstract void store(Transaction transaction, Account ownerAccount, long ownerIncrement, Account userAccount, long userIncrement)
+    protected abstract void storeTrade(@Nonnull Transaction transaction, @Nullable Acc ownerAccount, int ownerIncrement, @Nullable Acc userAccount, int userIncrement)
             throws DataStoreException;
 }

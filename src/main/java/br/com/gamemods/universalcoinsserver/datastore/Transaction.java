@@ -136,7 +136,7 @@ public final class Transaction
             this.balanceAfter = balanceAfter;
         }
 
-        public CardCoinSource(AccountAddress accountAddress, int increment) throws DataBaseException
+        public CardCoinSource(AccountAddress accountAddress, int increment) throws AccountNotFoundException, DataStoreException
         {
             if(accountAddress == null)
                 throw new NullPointerException("accountAddress");
@@ -145,7 +145,7 @@ public final class Transaction
             this.balanceAfter = balanceBefore + increment;
         }
 
-        public CardCoinSource(ItemStack card, int increment) throws DataBaseException, NullPointerException
+        public CardCoinSource(ItemStack card, int increment) throws NullPointerException, AccountNotFoundException, DataStoreException
         {
             if(card == null)
                 throw new NullPointerException("card");
@@ -271,12 +271,6 @@ public final class Transaction
                     ", balanceAfter=" + balanceAfter +
                     "} " + super.toString();
         }
-    }
-
-    public enum CoinSourceType
-    {
-        COIN,
-        CARD
     }
 
     public enum Operation
