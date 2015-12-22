@@ -1,15 +1,16 @@
 package br.com.gamemods.universalcoinsserver.datastore;
 
+import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.blocks.PlayerOwned;
 import cpw.mods.fml.common.registry.GameData;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
+import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.UUID;
+import java.util.*;
 
 public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
 {
@@ -947,6 +948,200 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                 {
                     e.printStackTrace();
                 }
+        }
+    }
+
+    @Override
+    public Collection<PlayerData> getAllPlayerData() throws DataStoreException
+    {
+        try(Statement stm = connection.createStatement())
+        {
+            ResultSet result = stm.executeQuery("SELECT COUNT(*) FROM `user_data`");
+            result.next();
+            ArrayList<PlayerData> list = new ArrayList<>(result.getInt(1));
+
+            result = stm.executeQuery("SELECT `player_id` FROM `user_data`");
+            while (result.next())
+                list.add(getPlayerData(UUID.fromString(result.getString(1))));
+
+            return list;
+        }
+        catch (SQLException e)
+        {
+            throw new DataStoreException(e);
+        }
+    }
+
+    @Override
+    public Map<AccountAddress, Integer> getAllAccountsBalance() throws DataStoreException
+    {
+        try(Statement stm = connection.createStatement())
+        {
+            ResultSet result = stm.executeQuery("SELECT COUNT(*) FROM `accounts` WHERE `terminated` IS NULL");
+            result.next();
+            Map<AccountAddress, Integer> map = new HashMap<>(result.getInt(1));
+
+            result = stm.executeQuery("SELECT `number`, `owner`, `name`, `balance` FROM `accounts` WHERE `terminated` IS NULL");
+            while (result.next())
+                map.put(new AccountAddress(result.getString(1), result.getString(3), UUID.fromString(result.getString(2))), result.getInt(4));
+
+            return map;
+        }
+        catch (SQLException e)
+        {
+            throw new DataStoreException(e);
+        }
+    }
+
+    @Override
+    public void importData(CardDataBase original) throws DataStoreException
+    {
+        try
+        {
+            connection.setAutoCommit(false);
+
+            Collection<PlayerData> allPlayerData = original.getAllPlayerData();
+            Map<AccountAddress, Integer> allAccountsBalance = original.getAllAccountsBalance();
+            Map<String, Map.Entry<AccountAddress, Integer>> accountMap = new HashMap<>(allAccountsBalance.size());
+            for(Map.Entry<AccountAddress, Integer> entry: allAccountsBalance.entrySet())
+                accountMap.put(entry.getKey().getNumber().toString(), entry);
+
+            Logger logger = UniversalCoinsServer.logger;
+
+
+            for(PlayerData otherPlayerData: allPlayerData)
+            {
+                PlayerData localPlayerData = getPlayerData(otherPlayerData.getPlayerId());
+                AccountAddress otherPrimaryAccount = otherPlayerData.getPrimaryAccount();
+
+                logger.info("");
+                logger.info("Processing player "+localPlayerData.getPlayerId());
+
+                if(otherPrimaryAccount != null)
+                {
+                    int otherBalance = accountMap.get(otherPrimaryAccount.getNumber().toString()).getValue();
+                    if(otherBalance > 0)
+                    {
+                        if (localPlayerData.getPrimaryAccount() == null)
+                        {
+                            logger.info("Creating primary account for "+localPlayerData.getPlayerId()+" with name "+otherPrimaryAccount.getName());
+
+                            AccountAddress localAddress = createPrimaryAccount(localPlayerData.getPlayerId(), otherPrimaryAccount.getName());
+                            logger.info("Account created: "+localAddress);
+                            try(PreparedStatement pst = connection.prepareStatement(
+                                    "UPDATE `accounts` SET `number`=?, `balance`=? WHERE `number`=?"
+                            ))
+                            {
+                                logger.info("Changing balance to "+otherBalance+" and number to "+otherPrimaryAccount.getNumber());
+
+                                pst.setString(1, otherPrimaryAccount.getNumber().toString());
+                                pst.setInt(2, otherBalance);
+                                pst.setString(3, localAddress.getNumber().toString());
+                                pst.executeUpdate();
+                            }
+                        }
+                        else
+                        {
+                            AbstractSQL.SqlAccount account = getAccount(localPlayerData.getPrimaryAccount());
+                            logger.info("Adding "+otherBalance+" to the account "+account.id);
+                            account.incrementBalance(otherBalance, null);
+                        }
+                    }
+                }
+
+                if(otherPlayerData.getAlternativeAccounts().isEmpty())
+                    continue;
+
+                if(localPlayerData.getAlternativeAccounts().isEmpty())
+                {
+                    logger.info("The player doesn't have any alternative account, creating "+otherPlayerData.getAlternativeAccounts().size()+"...");
+                    for(AccountAddress otherAccountAddress: otherPlayerData.getAlternativeAccounts())
+                    {
+                        int balance = accountMap.get(otherAccountAddress.getNumber().toString()).getValue();
+                        if(balance <= 0) continue;
+                        logger.info("Creating account "+otherAccountAddress.getName());
+                        AccountAddress customAccount = createCustomAccount(localPlayerData.getPlayerId(), otherAccountAddress.getName());
+                        logger.info("Account created with number "+customAccount.getNumber()+", changing to "+otherAccountAddress.getNumber()+" and setting balance to "+balance);
+                        try(PreparedStatement pst = connection.prepareStatement(
+                                "UPDATE `accounts` SET `number`=?, `balance`=? WHERE `number`=?"
+                        ))
+                        {
+                            pst.setString(1, otherAccountAddress.getNumber().toString());
+                            pst.setInt(2, balance);
+                            pst.setString(3, customAccount.getNumber().toString());
+                            pst.executeUpdate();
+                        }
+                    }
+                }
+                else if(localPlayerData.getAlternativeAccounts().size() == 1)
+                {
+                    logger.info("The player has one alternative account, merging "+otherPlayerData.getAlternativeAccounts().size()+" accounts...");
+                    AbstractSQL.SqlAccount account = getAccount(localPlayerData.getAlternativeAccounts().iterator().next());
+                    for(AccountAddress otherAccountAddress: otherPlayerData.getAlternativeAccounts())
+                    {
+                        int balance = accountMap.get(otherAccountAddress.getNumber().toString()).getValue();
+                        if(balance <= 0) continue;
+                        logger.info("Adding "+balance+" to the balance that came from "+otherAccountAddress);
+                        account.incrementBalance(balance, null);
+                    }
+                }
+                else
+                {
+                    logger.info("The player has multiple custom accounts, creating/merging "+otherPlayerData.getAlternativeAccounts().size()+" accounts...");
+                    for(AccountAddress otherAccountAddress: otherPlayerData.getAlternativeAccounts())
+                    {
+                        int balance = accountMap.get(otherAccountAddress.getNumber().toString()).getValue();
+                        if(balance <= 0) continue;
+
+                        SqlAccount customAccount = getCustomAccount(otherAccountAddress.getName());
+                        if(customAccount != null)
+                        {
+                            logger.info("Adding "+balance+" to the balance that came from "+otherAccountAddress);
+                            customAccount.incrementBalance(balance, null);
+                        }
+                        else
+                        {
+                            logger.info("Creating account "+otherAccountAddress.getName());
+                            AccountAddress createdAccount = createCustomAccount(localPlayerData.getPlayerId(), otherAccountAddress.getName());
+                            logger.info("Account created with number "+createdAccount.getNumber()+", changing to "+otherAccountAddress.getNumber()+" and setting balance to "+balance);
+                            try(PreparedStatement pst = connection.prepareStatement(
+                                    "UPDATE `accounts` SET `number`=?, `balance`=? WHERE `number`=?"
+                            ))
+                            {
+                                pst.setString(1, otherAccountAddress.getNumber().toString());
+                                pst.setInt(2, balance);
+                                pst.setString(3, createdAccount.getNumber().toString());
+                                pst.executeUpdate();
+                            }
+                        }
+                    }
+                }
+            }
+
+            logger.info("");
+            logger.info("Import finished, committing");
+            connection.commit();
+        }
+        catch (Throwable e)
+        {
+            try
+            {
+                connection.rollback();
+            } catch (SQLException e1)
+            {
+                e1.printStackTrace();
+            }
+            throw new DataStoreException(e);
+        }
+        finally
+        {
+            try
+            {
+                connection.setAutoCommit(true);
+            } catch (SQLException e)
+            {
+                e.printStackTrace();
+            }
         }
     }
 }

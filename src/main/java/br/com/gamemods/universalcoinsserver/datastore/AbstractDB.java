@@ -62,6 +62,7 @@ public abstract class AbstractDB<Acc extends AbstractDB.Account> implements Card
     {
         if(account instanceof String) return (String) account;
         if(account instanceof AccountAddress) return ((AccountAddress) account).getNumber().toString();
+        if(account instanceof PlayerData) return getAccountNumber(((PlayerData) account).getPrimaryAccount());
         if(account == null) return null;
         if(account instanceof ItemStack)
         {

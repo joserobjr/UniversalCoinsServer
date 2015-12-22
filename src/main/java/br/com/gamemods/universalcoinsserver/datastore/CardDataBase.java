@@ -5,6 +5,7 @@ import net.minecraft.item.ItemStack;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Collection;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -108,4 +109,10 @@ public interface CardDataBase
      */
     void processTrade(@Nonnull Transaction transaction)
             throws DataStoreException, AccountNotFoundException, OutOfCoinsException;
+
+    Collection<PlayerData> getAllPlayerData() throws DataStoreException;
+
+    Map<AccountAddress,Integer> getAllAccountsBalance() throws DataStoreException;
+
+    void importData(CardDataBase original) throws DataStoreException;
 }

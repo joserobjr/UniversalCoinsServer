@@ -1,6 +1,11 @@
 package br.com.gamemods.universalcoinsserver.datastore;
 
+import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagInt;
+import net.minecraft.nbt.NBTTagString;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSavedData;
@@ -8,8 +13,8 @@ import net.minecraft.world.storage.MapStorage;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Collections;
-import java.util.UUID;
+import java.util.*;
+import java.util.regex.Pattern;
 
 public class NbtDB extends AbstractDB<AbstractDB.Account>
 {
@@ -307,5 +312,113 @@ public class NbtDB extends AbstractDB<AbstractDB.Account>
             return new AccountAddress(accountNumber, newName, owner);
 
         throw new UnsupportedOperationException("Failed to create primary account "+primaryAccount);
+    }
+
+    @Override
+    public Collection<PlayerData> getAllPlayerData() throws DataStoreException
+    {
+        WorldData worldData = sync(getWorld());
+        //noinspection unchecked
+        Set<String> keySet = worldData.data.func_150296_c();
+
+        ArrayList<PlayerData> list = new ArrayList<>();
+
+        for(String key: keySet)
+        {
+            if(key.length() == 36 && key.contains("-"))
+            {
+                UUID playerId = UUID.fromString(key);
+                String primaryNumber = worldData.data.getString(key);
+                String customName = "";
+                for(String key2: keySet)
+                {
+                    if(!key2.equals(key) && key2.endsWith(key))
+                    {
+                        customName = worldData.data.getString(key2);
+                        break;
+                    }
+                }
+                String customNumber = !customName.isEmpty()? worldData.data.getString(customName) : "";
+                list.add(new PlayerData(Integer.MIN_VALUE, playerId, new AccountAddress(primaryNumber, primaryNumber, playerId),
+                        customName.isEmpty()? null : Collections.singleton(new AccountAddress(customNumber, customName, playerId))
+                ));
+            }
+        }
+        return list;
+    }
+
+    @Override
+    public Map<AccountAddress, Integer> getAllAccountsBalance() throws DataStoreException
+    {
+        WorldData worldData = sync(getWorld());
+        //noinspection unchecked
+        Set<String> keySet = worldData.data.func_150296_c();
+
+        Pattern pattern = Pattern.compile("^[0-9]+$");
+
+        Map<String, Integer> balances = new HashMap<>();
+        BiMap<UUID, String> playerPrimaries = HashBiMap.create();
+        BiMap<UUID, String> playerCustoms = HashBiMap.create();
+        BiMap<String, String> customAccounts = HashBiMap.create();
+
+
+        for(String key: keySet)
+        {
+            int length = key.length();
+            if(length >= 8 && length < 36 && pattern.matcher(key).matches() && (worldData.data.getTag(key) instanceof NBTTagInt))
+                balances.put(key, worldData.data.getInteger(key));
+            else if(length == 36 && key.contains("-"))
+                playerPrimaries.put(UUID.fromString(key), worldData.data.getString(key));
+            else if(length > 36 && key.contains("-") && (worldData.data.getTag(key) instanceof NBTTagString))
+            {
+                try
+                {
+                    UUID playerId = UUID.fromString(key.substring(key.length()-36));
+                    playerCustoms.put(playerId, worldData.data.getString(key));
+                }
+                catch (Exception e){e.printStackTrace();}
+            }
+            else if(worldData.data.getTag(key) instanceof NBTTagString)
+                customAccounts.put(key, worldData.data.getString(key));
+        }
+
+        Map<AccountAddress, Integer> map = new HashMap<>(balances.size());
+
+        for(Map.Entry<String, Integer> entry: balances.entrySet())
+        {
+            String number = entry.getKey();
+            int balance = entry.getValue();
+            UUID primaryOwner = playerPrimaries.inverse().get(number);
+            String customName = customAccounts.inverse().get(number);
+            UUID customOwner = playerCustoms.inverse().get(customName);
+
+            if(primaryOwner == null && customOwner == null)
+            {
+                if(balance <= 0)
+                    continue;
+                else
+                {
+                    UniversalCoinsServer.logger.warn("Skipping account "+number+" with balance "+balance+" because the owner is unknown!");
+                    continue;
+                }
+            }
+
+
+            AccountAddress address = new AccountAddress(
+                    number,
+                    customName != null? customName : number,
+                    customOwner != null? customOwner : primaryOwner
+            );
+
+            map.put(address, balance);
+        }
+
+        return map;
+    }
+
+    @Override
+    public void importData(CardDataBase original) throws DataStoreException
+    {
+        throw new DataStoreException(new UnsupportedOperationException());
     }
 }

@@ -1,8 +1,7 @@
 package br.com.gamemods.universalcoinsserver;
 
 import br.com.gamemods.universalcoinsserver.blocks.*;
-import br.com.gamemods.universalcoinsserver.datastore.NbtDB;
-import br.com.gamemods.universalcoinsserver.datastore.SqlDB;
+import br.com.gamemods.universalcoinsserver.datastore.*;
 import br.com.gamemods.universalcoinsserver.item.*;
 import br.com.gamemods.universalcoinsserver.recipe.RecipeEnderCard;
 import br.com.gamemods.universalcoinsserver.recipe.RecipePlankTextureChange;
@@ -21,12 +20,16 @@ import net.minecraftforge.common.AchievementPage;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
 import net.minecraftforge.oredict.RecipeSorter;
+import org.apache.logging.log4j.Logger;
 
+import java.io.File;
+import java.io.IOException;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 public class CommonProxy
 {
@@ -83,6 +86,8 @@ public class CommonProxy
         String sqlUrl;
         String sqlUser;
         String sqlPasswd;
+        int conversionFromType;
+        String propertiesDir;
 
         ConfigLoader(Configuration source){ this.source = source; }
 
@@ -323,7 +328,7 @@ public class CommonProxy
                     "saves the data as raw text. Simple but not reliable.\n" +
                     "2: sql - Uses an external database software like MySQL or an SQL library like SQLite. (IMPORTANT: The tables aren't created automatically on this version)\n" +
                     "3: nbt - Stores data using NBT Keys on world data. This type has limited functionality and is not recommended, use it for compatibility with data from the original mod";
-            databaseType = prop.getInt(1);
+            databaseType = Math.max(1, Math.min(prop.getInt(1), 3));
 
             prop = source.get(category, "SQL URL", "jdbc:mysql://localhost:3306/database_name?autoReconnect=true");
             prop.comment = "The URL for the SQL server";
@@ -337,18 +342,61 @@ public class CommonProxy
             prop.comment="The password used to connect to the SQL Server.";
             sqlPasswd = prop.getString();
 
+            prop = source.get(category, "Convert from Database Type", 0);
+            prop.comment = "Loads data from a different database type and adds to the database defined in this category.\n" +
+                    "This will be automatically set to zero after the data conversion is completed";
+            conversionFromType = Math.max(0, Math.min(prop.getInt(0), 3));
+            prop.set(0);
+
+            prop = source.get(category, "Properties Directory", new File(source.getConfigFile().getParent(), "UniversalCoins-database").getPath());
+            prop.comment = "Directory where the properties database will be saved";
+            propertiesDir = prop.getString();
+
             this.source.save();
         }
 
-        public void initConnection() throws ClassNotFoundException, SQLException
+        public void initConnection() throws ClassNotFoundException, SQLException, IOException, DataBaseException
         {
-            if(databaseType == 1)
-                UniversalCoinsServer.cardDb = new SqlDB(DriverManager.getConnection(sqlUrl, sqlUser, sqlPasswd));
-            else if(databaseType == 3)
-                UniversalCoinsServer.cardDb = new NbtDB();
+            switch (databaseType)
+            {
+                case 1: UniversalCoinsServer.cardDb = new PropertiesDB(new File(propertiesDir)); break;
+                case 2: UniversalCoinsServer.cardDb = new SqlDB(DriverManager.getConnection(sqlUrl, sqlUser, sqlPasswd)); break;
+                case 3: UniversalCoinsServer.cardDb = new NbtDB(); break;
+                default: throw new IllegalArgumentException("Database Type: "+databaseType);
+            }
 
-            sqlUser = null;
-            sqlPasswd = null;
+            if(conversionFromType == databaseType)
+                throw new IllegalArgumentException("Attempted to import data from the same database type");
+
+            if(conversionFromType > 0)
+            {
+                UniversalCoinsServer.instance.hook = new Callable<Void>()
+                {
+                    @Override
+                    public Void call() throws Exception
+                    {
+                        CardDataBase original;
+                        switch (conversionFromType)
+                        {
+                            case 1: original = new PropertiesDB(new File(propertiesDir)); break;
+                            case 2: original = new SqlDB(DriverManager.getConnection(sqlUrl, sqlUser, sqlPasswd)); break;
+                            case 3: original = new NbtDB(); break;
+                            default: throw new IllegalArgumentException("Convert From Database Type: "+databaseType);
+                        }
+
+                        Logger logger = UniversalCoinsServer.logger;
+                        logger.info("Importing data from database-type "+conversionFromType+" to "+databaseType);
+
+                        UniversalCoinsServer.cardDb.importData(original);
+                        return null;
+                    }
+                };
+            }
+            else
+            {
+                sqlUser = null;
+                sqlPasswd = null;
+            }
         }
     }
 

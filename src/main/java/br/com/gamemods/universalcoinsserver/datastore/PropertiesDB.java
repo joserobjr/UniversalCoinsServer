@@ -252,6 +252,7 @@ public class PropertiesDB implements CardDataBase
             properties.setProperty("number", number);
             properties.setProperty("owner.id", playerUID.toString());
             properties.setProperty("balance", "0");
+            properties.setProperty("name", name);
 
             try(FileWriter writer = new FileWriter(file))
             {
@@ -1054,6 +1055,56 @@ public class PropertiesDB implements CardDataBase
             if(stack.hasTagCompound())
                 properties.put(key+".tags", stack.stackTagCompound.toString());
         }
+    }
+
+    @Override
+    public Collection<PlayerData> getAllPlayerData() throws DataStoreException
+    {
+        File[] playerFiles = players.listFiles();
+        if(playerFiles == null)
+            throw new DataStoreException("Failed to list files on "+players.getAbsolutePath());
+
+        ArrayList<PlayerData> list = new ArrayList<>(playerFiles.length);
+        for(File playerFile: playerFiles)
+        {
+            String fileName = playerFile.getName();
+            if(playerFile.isFile() && fileName.toLowerCase().endsWith(".properties"))
+                list.add(getPlayerData(UUID.fromString(fileName.substring(0, fileName.length()-".properties".length()))));
+        }
+        return list;
+    }
+
+    @Override
+    public Map<AccountAddress, Integer> getAllAccountsBalance() throws DataStoreException
+    {
+        File[] accountFiles = accounts.listFiles();
+        if(accountFiles == null)
+            throw new DataStoreException("Failed to list files on "+accounts.getAbsolutePath());
+
+        Map<AccountAddress, Integer> map = new HashMap<>(accountFiles.length);
+        for(File accountFile: accountFiles)
+        {
+            String fileName = accountFile.getName();
+            if(accountFile.isFile() && fileName.toLowerCase().endsWith(".properties"))
+            {
+                String account = fileName.substring(0, fileName.length() - ".properties".length());
+                Properties properties = loadAccount(account);
+                if(properties.getProperty("removed", "false").equals("true"))
+                    continue;
+
+                int balance = Integer.parseInt(properties.getProperty("balance", "0"));
+                UUID owner = UUID.fromString(properties.getProperty("owner.id"));
+                String name = properties.getProperty("name", account);
+                map.put(new AccountAddress(account, name, owner), balance);
+            }
+        }
+        return map;
+    }
+
+    @Override
+    public void importData(CardDataBase original) throws DataStoreException
+    {
+        throw new DataStoreException(new UnsupportedOperationException());
     }
 
     static class SortedProperties extends Properties
