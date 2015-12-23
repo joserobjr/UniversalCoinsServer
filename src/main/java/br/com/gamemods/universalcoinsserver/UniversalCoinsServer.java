@@ -1,8 +1,6 @@
 package br.com.gamemods.universalcoinsserver;
 
-import br.com.gamemods.universalcoinsserver.command.CommandBalance;
-import br.com.gamemods.universalcoinsserver.command.CommandGive;
-import br.com.gamemods.universalcoinsserver.command.CommandTake;
+import br.com.gamemods.universalcoinsserver.command.*;
 import br.com.gamemods.universalcoinsserver.datastore.CardDataBase;
 import br.com.gamemods.universalcoinsserver.datastore.DataBaseException;
 import br.com.gamemods.universalcoinsserver.net.*;
@@ -96,11 +94,8 @@ public class UniversalCoinsServer
         event.registerServerCommand(new CommandBalance());
         event.registerServerCommand(new CommandGive());
         event.registerServerCommand(new CommandTake());
-
-        /* Instable
         event.registerServerCommand(new CommandRebalance());
         event.registerServerCommand(new CommandSend());
-        */
     }
 
     @Mod.EventHandler

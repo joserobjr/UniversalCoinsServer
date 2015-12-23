@@ -80,7 +80,7 @@ public class CommandTake extends CommandBase
         }
 
         ScanResult scanResult = UniversalCoinsServerAPI.scanCoins(receiver.inventory);
-        int change = UniversalCoinsServerAPI.takeCoinsReturningChange(scanResult, coinsToTake, receiver,3);
-        sender.addChatMessage(new ChatComponentText("Took "+(coinsToTake)+" with change "+change+" (actually took "+(coinsToTake-change)+")"));
+        int change = UniversalCoinsServerAPI.takeCoinsReturningChange(scanResult, coinsToTake, receiver);
+        sender.addChatMessage(new ChatComponentText("Took "+(coinsToTake)+" with change "+change+" (actually took "+(coinsToTake+change)+")"));
     }
 }
