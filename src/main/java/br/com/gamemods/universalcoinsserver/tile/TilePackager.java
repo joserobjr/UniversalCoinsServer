@@ -197,31 +197,82 @@ public class TilePackager extends TileTransactionMachine
         {
             if(p.getPersistentID().equals(targetId))
             {
-                if(MinecraftForge.EVENT_BUS.post(new PlayerSendPackage(opener, p, stack, this)))
+                PlayerSendPackage event = new PlayerSendPackage(opener, p, stack, this);
+                if(MinecraftForge.EVENT_BUS.post(event))
+                {
+                    if(event.delivered)
+                    {
+                        inventory[SLOT_PACKAGE_INPUT] = null;
+                        markDirty();
+                    }
                     return;
+                }
+
+                ItemStack original = stack;
+                stack = stack.copy();
+                stack.stackTagCompound.setString("sender", opener.getCommandSenderName());
+                long time = System.currentTimeMillis();
+                stack.stackTagCompound.setLong("sent", time);
+                stack.stackTagCompound.setLong("received", time);
 
                 if(!p.inventory.addItemStackToInventory(stack))
                 {
+                    event = new PlayerSendPackage(opener, null, original, this);
+                    if(MinecraftForge.EVENT_BUS.post(event))
+                    {
+                        if(event.delivered)
+                        {
+                            inventory[SLOT_PACKAGE_INPUT] = null;
+                            markDirty();
+
+                            int pending = 1;
+                            try
+                            {
+                                pending = UniversalCoinsServer.cardDb.getPendingDeliveries(p.getPersistentID());
+                            } catch (DataStoreException e)
+                            {
+                                e.printStackTrace();
+                            }
+
+
+                            p.addChatComponentMessage(
+                                    new ChatComponentTranslation("you.have.packets.to.receive", pending,
+                                            "/" + UniversalCoinsServer.instance.commandReceivePackets.getCommandName())
+                                        .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GREEN))
+                            );
+                            return;
+                        }
+                    }
+
                     Random rand = UniversalCoinsServerAPI.random;
                     float rx = rand.nextFloat() * 0.8F + 0.1F;
                     float ry = rand.nextFloat() * 0.8F + 0.1F;
                     float rz = rand.nextFloat() * 0.8F + 0.1F;
-                    EntityItem entityItem = new EntityItem(worldObj, p.posX + rx, p.posY + ry, p.posZ + rz,
-                            inventory[SLOT_PACKAGE_INPUT]);
+                    EntityItem entityItem = new EntityItem(worldObj, p.posX + rx, p.posY + ry, p.posZ + rz, stack);
                     worldObj.spawnEntityInWorld(entityItem);
                 }
-                else
-                {
-                    p.addChatComponentMessage(
-                            new ChatComponentText(opener.getDisplayName())
-                                .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED))
-                                .appendSibling(new ChatComponentTranslation("packager.message.sent"))
-                    );
-                }
+
+                p.addChatComponentMessage(
+                        new ChatComponentText(opener.getDisplayName())
+                            .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GREEN))
+                            .appendSibling(new ChatComponentTranslation("packager.message.sent"))
+                );
+
                 inventory[SLOT_PACKAGE_INPUT] = null;
                 markDirty();
                 return;
             }
+        }
+
+        PlayerSendPackage event = new PlayerSendPackage(opener, null, stack, this);
+        if(MinecraftForge.EVENT_BUS.post(event))
+        {
+            if(event.delivered)
+            {
+                inventory[SLOT_PACKAGE_INPUT] = null;
+                markDirty();
+            }
+            return;
         }
 
         opener.addChatComponentMessage(new ChatComponentTranslation("packager.player.is.not.online").setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED)));

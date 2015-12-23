@@ -3,8 +3,16 @@ package br.com.gamemods.universalcoinsserver.datastore;
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.blocks.PlayerOwned;
 import cpw.mods.fml.common.registry.GameData;
+import net.minecraft.command.ICommandSender;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.JsonToNBT;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.ChatComponentTranslation;
+import net.minecraft.util.ChatStyle;
+import net.minecraft.util.EnumChatFormatting;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nonnull;
@@ -1164,6 +1172,211 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             {
                 e.printStackTrace();
             }
+        }
+    }
+
+    @Override
+    public void updatePlayerName(@Nonnull UUID playerUUID, @Nonnull String commandSenderName) throws DataStoreException
+    {
+        try
+        {
+            String playerId = playerUUID.toString();
+            boolean userRegistered;
+            try(PreparedStatement pst = connection.prepareStatement(
+                    "SELECT `player_name` FROM `user_data` WHERE `player_id`=?"
+            ))
+            {
+                pst.setString(1, playerId);
+                ResultSet result = pst.executeQuery();
+                if((userRegistered=result.next()) && commandSenderName.equals(result.getString(1)))
+                    return;
+            }
+
+            if(!userRegistered)
+                try(PreparedStatement pst = connection.prepareStatement(
+                        "INSERT INTO `user_data`(`player_id`,`player_name`) VALUES(?,?)"
+                ))
+                {
+                    pst.setString(1, playerId);
+                    pst.setString(2, commandSenderName);
+                    pst.executeUpdate();
+                }
+            else
+                try(PreparedStatement pst = connection.prepareStatement(
+                        "UPDATE `user_data` SET `player_name`=? WHERE `player_id`=?"
+                ))
+                {
+                    pst.setString(1, commandSenderName);
+                    pst.setString(2, playerId);
+                    pst.executeUpdate();
+                }
+        }
+        catch (SQLException e)
+        {
+            throw new DataStoreException(e);
+        }
+    }
+
+    @Nullable
+    @Override
+    public UUID getPlayerIdByName(@Nonnull String name) throws DataStoreException
+    {
+        if(!name.matches("^[a-zA-Z0-9_]+$"))
+            return null;
+
+        try(PreparedStatement pst = connection.prepareStatement(
+                "SELECT `player_id` FROM `user_data` WHERE `player_name`=?"
+        ))
+        {
+            pst.setString(1, name);
+            ResultSet result = pst.executeQuery();
+            if(!result.next())
+                return null;
+            return UUID.fromString(result.getString(1));
+        }
+        catch (Exception e)
+        {
+            throw new DataStoreException(e);
+        }
+    }
+
+    @Nullable
+    @Override
+    public Map<UUID, String> findPlayerByName(@Nonnull String searchedName) throws DataStoreException
+    {
+        if(!searchedName.matches("^[a-zA-Z0-9_]+$"))
+            return null;
+
+        Map<UUID, String> map = new HashMap<>();
+        try(PreparedStatement pst = connection.prepareStatement(
+                "SELECT `player_id`, `player_name` FROM `user_data` WHERE `player_name` LIKE ?"
+        ))
+        {
+            pst.setString(1, searchedName+"%");
+            ResultSet result = pst.executeQuery();
+            while (result.next())
+            {
+                map.put(UUID.fromString(result.getString(1)), result.getString(2));
+            }
+
+            return map;
+        }
+        catch (Exception e)
+        {
+            throw new DataStoreException(e);
+        }
+    }
+
+    @Override
+    public boolean storePackage(@Nonnull ItemStack packageStack, ICommandSender sender, @Nonnull UUID targetId) throws DataStoreException
+    {
+        try(PreparedStatement pst = connection.prepareStatement(
+                "INSERT INTO `deliveries`(`item`,`sender`,`sender_id`,`target_id`) VALUES(?,?,?,?)"
+        ))
+        {
+            NBTTagCompound nbt = new NBTTagCompound();
+            packageStack.writeToNBT(nbt);
+            pst.setString(1, nbt.toString());
+            pst.setString(2, sender.getCommandSenderName());
+            if(sender instanceof EntityPlayer)
+                pst.setString(3, ((EntityPlayer) sender).getPersistentID().toString());
+            else
+                pst.setNull(3, Types.CHAR);
+            pst.setString(4, targetId.toString());
+            pst.executeUpdate();
+            return true;
+        }
+        catch (Exception e)
+        {
+            throw new DataStoreException(e);
+        }
+    }
+
+    @Override
+    public void deliveryPackages(@Nonnull EntityPlayer player) throws DataStoreException
+    {
+        int firstEmptyStack = player.inventory.getFirstEmptyStack();
+        if(firstEmptyStack == -1)
+        {
+            player.addChatComponentMessage(new ChatComponentTranslation("sign.warning.inventoryfull").setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED)));
+            return;
+        }
+
+        try(PreparedStatement pst = connection.prepareStatement(
+                "SELECT `id`, `item`, `sender`, `sent` FROM `deliveries` WHERE `target_id`=? AND `delivered` IS NULL"
+        ); PreparedStatement update = connection.prepareStatement(
+                "UPDATE `deliveries` SET `delivered`=? WHERE `id`=?"
+        ))
+        {
+            pst.setString(1, player.getPersistentID().toString());
+            ResultSet result = pst.executeQuery();
+            while (result.next())
+            {
+                if(firstEmptyStack == -1)
+                {
+                    player.addChatComponentMessage(new ChatComponentTranslation("sign.warning.inventoryfull").setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED)));
+                    return;
+                }
+
+                int id = result.getInt(1);
+                String json = result.getString(2);
+                String sender = result.getString(3);
+                Timestamp sent = result.getTimestamp(4);
+                
+                NBTTagCompound nbt = (NBTTagCompound) JsonToNBT.func_150315_a(json);
+                ItemStack stack = ItemStack.loadItemStackFromNBT(nbt);
+
+                /*
+                NBTTagList list = new NBTTagList();
+                list.appendTag(new NBTTagString(EnumChatFormatting.BLUE+ StatCollector.translateToLocal("item.package.by")+" "+sender));
+                list.appendTag(new NBTTagString(EnumChatFormatting.BLUE+StatCollector.translateToLocal("item.package.on")+" "+ DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(sent.getTime())));
+                list.appendTag(new NBTTagString(EnumChatFormatting.BLUE+StatCollector.translateToLocal("item.package.received")+" "+ DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(System.currentTimeMillis())));
+                NBTTagCompound display = new NBTTagCompound();
+                display.setTag("Lore", list);
+                stack.stackTagCompound.setTag("display", display);
+                */
+                stack.stackTagCompound.setString("sender", sender);
+                stack.stackTagCompound.setLong("sent", sent.getTime());
+                long time = System.currentTimeMillis();
+                stack.stackTagCompound.setLong("received", time);
+
+                update.setTimestamp(1, new Timestamp(time));
+                update.setInt(2, id);
+                update.executeUpdate();
+
+                player.inventory.setInventorySlotContents(firstEmptyStack, stack);
+                player.addChatComponentMessage(
+                        new ChatComponentText(sender)
+                                .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GREEN))
+                                .appendSibling(new ChatComponentTranslation("packager.message.sent"))
+                );
+
+                firstEmptyStack = player.inventory.getFirstEmptyStack();
+            }
+        }
+        catch (Exception e)
+        {
+            throw new DataStoreException(e);
+        }
+    }
+
+    @Override
+    public int getPendingDeliveries(@Nonnull UUID persistentID) throws DataStoreException
+    {
+        try(PreparedStatement pst = connection.prepareStatement(
+                "SELECT COUNT(*) FROM `deliveries` WHERE `target_id`=? AND `delivered` IS NULL"
+        ))
+        {
+            pst.setString(1, persistentID.toString());
+            ResultSet results = pst.executeQuery();
+            if(results.next())
+                return results.getInt(1);
+            else
+                return 0;
+        }
+        catch (Exception e)
+        {
+            throw new DataStoreException(e);
         }
     }
 }

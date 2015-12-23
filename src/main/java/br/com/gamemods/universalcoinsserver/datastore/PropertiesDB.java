@@ -1,18 +1,32 @@
 package br.com.gamemods.universalcoinsserver.datastore;
 
+import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import br.com.gamemods.universalcoinsserver.api.UniversalCoinsServerAPI;
 import br.com.gamemods.universalcoinsserver.blocks.PlayerOwned;
 import br.com.gamemods.universalcoinsserver.tile.TileVendor;
 import cpw.mods.fml.common.registry.GameData;
+import net.minecraft.command.ICommandSender;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.JsonToNBT;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.ChatComponentTranslation;
+import net.minecraft.util.ChatStyle;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.World;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -60,6 +74,7 @@ public class PropertiesDB implements CardDataBase
         return properties;
     }
 
+    @Nonnull
     private Properties loadPlayer(UUID playerId) throws DataStoreException
     {
         if(playerId == null)
@@ -1135,5 +1150,267 @@ public class PropertiesDB implements CardDataBase
             Collections.sort(keyList);
             return keyList.elements();
         }
+    }
+
+    @Override
+    public void updatePlayerName(@Nonnull UUID persistentID, @Nonnull String commandSenderName) throws DataStoreException
+    {
+        File playerFile = getPlayerFile(persistentID);
+        Properties properties = loadPlayer(persistentID);
+        incrementInt(properties, "version", Integer.MIN_VALUE);
+        String previous = properties.getProperty("name");
+        properties.setProperty("name", commandSenderName);
+        try(FileWriter writer=new FileWriter(playerFile))
+        {
+            properties.store(writer, "Updated player name");
+        }
+        catch (IOException e)
+        {
+            throw new DataStoreException(e);
+        }
+
+        File namesDir = new File(players, "names");
+
+        if(!namesDir.mkdirs())
+            throw new DataStoreException("Failed to create dir "+namesDir.getAbsolutePath());
+
+        if(previous != null && !previous.isEmpty())
+        {
+            previous = previous.toLowerCase();
+            File dir = new File(namesDir, previous.substring(0, 2));
+            if(!dir.mkdirs())
+                throw new DataStoreException("Failed to create dir "+dir.getAbsolutePath());
+
+            File file = new File(dir, previous + ".properties");
+            if(!file.delete())
+                UniversalCoinsServer.logger.warn("Failed to delete file "+file);
+        }
+
+        String lowerCased = commandSenderName.toLowerCase();
+        File dir = new File(namesDir, lowerCased.substring(0, 2));
+        if(!dir.mkdirs())
+            throw new DataStoreException("Failed to create dir "+dir.getAbsolutePath());
+
+
+        File file = new File(dir, lowerCased+".properties");
+        properties = new SortedProperties();
+        properties.setProperty("player.id", persistentID.toString());
+        properties.setProperty("player.name", commandSenderName);
+        try(FileWriter writer = new FileWriter(file))
+        {
+            properties.store(writer, "Name Updated");
+        }
+        catch (IOException e)
+        {
+            throw new DataStoreException(e);
+        }
+    }
+
+    @Nullable
+    @Override
+    public UUID getPlayerIdByName(@Nonnull String name) throws DataStoreException
+    {
+        if(name.length() < 2 || name.contains("."))
+            return null;
+
+        name = name.toLowerCase();
+        File namesDir = new File(players, "names");
+        File dir = new File(namesDir, name.substring(0, 2));
+        if(!dir.isDirectory())
+            return null;
+
+        File[] namesFiles = dir.listFiles();
+        if(namesFiles == null)
+            return null;
+
+        for(File file: namesFiles)
+        {
+            if(file.getName().equalsIgnoreCase(name+".properties"))
+            {
+                try(FileReader reader = new FileReader(file))
+                {
+                    Properties properties = new Properties();
+                    properties.load(reader);
+                    String property = properties.getProperty("player.id");
+                    if(property == null)
+                        return null;
+                    return UUID.fromString(property);
+                }
+                catch (Exception e)
+                {
+                    throw new DataStoreException(e);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    @Nullable
+    @Override
+    public Map<UUID, String> findPlayerByName(@Nonnull String name) throws DataStoreException
+    {
+        if(name.length() < 2 || name.contains("."))
+            return null;
+
+        name = name.toLowerCase();
+        File namesDir = new File(players, "names");
+        File dir = new File(namesDir, name.substring(0, 2));
+        if(!dir.isDirectory())
+            return null;
+
+        File[] namesFiles = dir.listFiles();
+        if(namesFiles == null)
+            return null;
+
+        Map<UUID, String> matches = new HashMap<>();
+        for(File file: namesFiles)
+        {
+            if(file.getName().startsWith(name))
+            {
+                try(FileReader reader = new FileReader(file))
+                {
+                    Properties properties = new Properties();
+                    properties.load(reader);
+                    String property = properties.getProperty("player.id");
+                    String playerName = properties.getProperty("player.name");
+                    if(property == null || playerName == null)
+                        return null;
+
+                    matches.put(UUID.fromString(property), playerName);
+                }
+                catch (Exception e)
+                {
+                    throw new DataStoreException(e);
+                }
+            }
+        }
+
+        return matches;
+    }
+
+    @Override
+    public boolean storePackage(@Nonnull ItemStack packageStack, ICommandSender sender, @Nonnull UUID targetId) throws DataStoreException
+    {
+        File dir = new File(players, "deliveries");
+        dir = new File(dir, targetId.toString());
+        if(!dir.mkdirs())
+            throw new DataStoreException("Failed to create dir "+dir);
+
+        try
+        {
+            File file = File.createTempFile("delivery_", ".properties", dir);
+            SortedProperties properties = new SortedProperties();
+            NBTTagCompound nbt = new NBTTagCompound();
+            packageStack.writeToNBT(nbt);
+            properties.setProperty("item", nbt.toString());
+            properties.setProperty("sender.name", sender.getCommandSenderName());
+            if(sender instanceof Entity)
+                properties.setProperty("sender.id", ((Entity) sender).getPersistentID().toString());
+            properties.setProperty("target.id", targetId.toString());
+            try(FileWriter writer=new FileWriter(file))
+            {
+                properties.store(writer, "");
+            }
+            return true;
+        } catch (IOException e)
+        {
+            throw new DataStoreException(e);
+        }
+    }
+
+    @Override
+    public void deliveryPackages(@Nonnull EntityPlayer player) throws DataStoreException
+    {
+        int firstEmptyStack = player.inventory.getFirstEmptyStack();
+        if(firstEmptyStack == -1)
+        {
+            player.addChatComponentMessage(new ChatComponentTranslation("sign.warning.inventoryfull").setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED)));
+            return;
+        }
+
+        File dir = new File(players, "deliveries"), deliveredDir = new File(dir, "delivered");
+        dir = new File(dir, player.getPersistentID().toString());
+        if(!dir.isDirectory())
+            return;
+
+        File[] files = dir.listFiles();
+        if(files == null)
+            return;
+
+        try
+        {
+            for(File file: files)
+            {
+                String name = file.getName().toLowerCase();
+                if(name.startsWith("delivery_") && name.endsWith(".properties"))
+                {
+                    if(firstEmptyStack == -1)
+                    {
+                        player.addChatComponentMessage(new ChatComponentTranslation("sign.warning.inventoryfull").setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED)));
+                        return;
+                    }
+
+                    Properties properties = new Properties();
+                    try(FileReader reader = new FileReader(file))
+                    {
+                        properties.load(reader);
+                    }
+                    NBTTagCompound nbt = (NBTTagCompound) JsonToNBT.func_150315_a(properties.getProperty("item"));
+                    ItemStack stack = ItemStack.loadItemStackFromNBT(nbt);
+                    String sender = properties.getProperty("sender.name");
+
+                    long sent = Files.readAttributes(file.toPath(), BasicFileAttributes.class).creationTime().toMillis();
+
+                    stack.stackTagCompound.setString("sender", sender);
+                    stack.stackTagCompound.setLong("sent", sent);
+                    long time = System.currentTimeMillis();
+                    stack.stackTagCompound.setLong("received", time);
+
+                    File destiny = new File(deliveredDir, file.getName());
+                    Files.move(file.toPath(), destiny.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+
+                    player.inventory.setInventorySlotContents(firstEmptyStack, stack);
+                    player.addChatComponentMessage(
+                            new ChatComponentText(sender)
+                                    .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GREEN))
+                                    .appendSibling(new ChatComponentTranslation("packager.message.sent"))
+                    );
+
+                    firstEmptyStack = player.inventory.getFirstEmptyStack();
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            throw new DataStoreException(e);
+        }
+        finally
+        {
+            player.inventoryContainer.detectAndSendChanges();
+        }
+    }
+
+    @Override
+    public int getPendingDeliveries(@Nonnull UUID persistentID) throws DataStoreException
+    {
+        File dir = new File(players, "deliveries");
+        dir = new File(dir, persistentID.toString());
+        if(!dir.isDirectory())
+            return 0;
+
+        File[] files = dir.listFiles();
+        if(files == null)
+            return 0;
+
+        int count = 0;
+        for(File file: files)
+        {
+            String name = file.getName().toLowerCase();
+            if(name.startsWith("delivery_") && name.endsWith(".properties"))
+                count++;
+        }
+
+        return count;
     }
 }

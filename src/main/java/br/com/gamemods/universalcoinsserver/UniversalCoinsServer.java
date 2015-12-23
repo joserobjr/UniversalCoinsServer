@@ -38,6 +38,7 @@ public class UniversalCoinsServer
 
     public static SimpleNetworkWrapper network;
     public static CardDataBase cardDb;
+    public CommandReceivePackets commandReceivePackets;
 
     Callable<Void> hook;
 
@@ -85,6 +86,8 @@ public class UniversalCoinsServer
             ChestGenHooks.getInfo(ChestGenHooks.DUNGEON_CHEST).addItem(
                     new WeightedRandomChestContent(new ItemStack(proxy.coins[proxy.configs.chestCoin]), proxy.configs.chestMinStack, proxy.configs.chestMaxStack, proxy.configs.dungeonCoinChance));
 
+        new Mailer();
+
         proxy.configs = null;
     }
 
@@ -97,6 +100,7 @@ public class UniversalCoinsServer
         event.registerServerCommand(new CommandRebalance(proxy.commandRebalance));
         event.registerServerCommand(new CommandSend(proxy.commandSend));
         event.registerServerCommand(new CommandPackInventory());
+        event.registerServerCommand(commandReceivePackets = new CommandReceivePackets(proxy.commandReceivePackets));
     }
 
     @Mod.EventHandler

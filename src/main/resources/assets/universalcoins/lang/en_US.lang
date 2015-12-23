@@ -55,6 +55,13 @@ sign.warning.coins=Out Of Coins!
 sign.warning.inventoryfull=Inventory is Full!
 
 #####
+# Package
+#####
+item.package.by=By:
+item.package.on=On:
+item.package.received=Received:
+
+#####
 # Commands
 #####
 command.balance.name=balance

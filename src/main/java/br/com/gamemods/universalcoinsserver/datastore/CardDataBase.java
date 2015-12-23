@@ -1,5 +1,7 @@
 package br.com.gamemods.universalcoinsserver.datastore;
 
+import net.minecraft.command.ICommandSender;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 
 import javax.annotation.Nonnull;
@@ -117,4 +119,18 @@ public interface CardDataBase
     void importData(CardDataBase original) throws DataStoreException;
 
     AccountAddress renamePrimaryAccount(AccountAddress primaryAccount, String playerName) throws DataStoreException, AccountNotFoundException;
+
+    void updatePlayerName(@Nonnull UUID persistentID, @Nonnull String commandSenderName) throws DataStoreException;
+
+    @Nullable
+    UUID getPlayerIdByName(@Nonnull String name) throws DataStoreException;
+
+    @Nullable
+    Map<UUID, String> findPlayerByName(@Nonnull String searchedName) throws DataStoreException;
+
+    boolean storePackage(@Nonnull ItemStack packageStack, ICommandSender sender, @Nonnull UUID targetId) throws DataStoreException;
+
+    void deliveryPackages(@Nonnull EntityPlayer player) throws DataStoreException;
+
+    int getPendingDeliveries(@Nonnull UUID persistentID) throws DataStoreException;
 }

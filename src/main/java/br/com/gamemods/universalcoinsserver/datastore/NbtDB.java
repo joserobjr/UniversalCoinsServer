@@ -3,6 +3,9 @@ package br.com.gamemods.universalcoinsserver.datastore;
 import br.com.gamemods.universalcoinsserver.UniversalCoinsServer;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import net.minecraft.command.ICommandSender;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagInt;
 import net.minecraft.nbt.NBTTagString;
@@ -431,5 +434,47 @@ public class NbtDB extends AbstractDB<AbstractDB.Account>
     public void importData(CardDataBase original) throws DataStoreException
     {
         throw new DataStoreException(new UnsupportedOperationException());
+    }
+
+    @Override
+    public void updatePlayerName(@Nonnull UUID persistentID, @Nullable String commandSenderName) throws DataStoreException
+    {
+        // Unsupported
+    }
+
+    @Nullable
+    @Override
+    public UUID getPlayerIdByName(@Nonnull String name) throws DataStoreException
+    {
+        // Unsupported
+        return null;
+    }
+
+    @Nullable
+    @Override
+    public Map<UUID, String> findPlayerByName(@Nonnull String searchedName) throws DataStoreException
+    {
+        // Unsupported
+        return null;
+    }
+
+    @Override
+    public boolean storePackage(@Nonnull ItemStack packageStack, ICommandSender sender, @Nonnull UUID targetId) throws DataStoreException
+    {
+        // Unsupported
+        return false;
+    }
+
+    @Override
+    public void deliveryPackages(@Nonnull EntityPlayer player) throws DataStoreException
+    {
+        // Unsupported
+    }
+
+    @Override
+    public int getPendingDeliveries(@Nonnull UUID persistentID) throws DataStoreException
+    {
+        // Unsupported
+        return 0;
     }
 }

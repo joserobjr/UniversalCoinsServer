@@ -12,14 +12,15 @@ import java.util.UUID;
 @Cancelable
 public class PlayerSendPackage extends Event
 {
-    private final EntityPlayer sender;
-    private final UUID targetId;
-    private final EntityPlayer targetPlayer;
+    public EntityPlayer sender;
+    public UUID targetId;
+    public EntityPlayer targetPlayer;
     private final ItemStack stack;
     public final int blockX;
     public final int blockY;
     public final int blockZ;
     public final World blockWorld;
+    public boolean delivered;
 
     public PlayerSendPackage(EntityPlayer sender, EntityPlayer targetPlayer, ItemStack stack, TilePackager packager)
     {
@@ -31,5 +32,10 @@ public class PlayerSendPackage extends Event
         this.blockY = packager.yCoord;
         this.blockZ = packager.yCoord;
         this.blockWorld = packager.getWorldObj();
+    }
+
+    public ItemStack getPackage()
+    {
+        return stack.copy();
     }
 }

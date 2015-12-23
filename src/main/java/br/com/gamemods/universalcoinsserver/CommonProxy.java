@@ -67,6 +67,7 @@ public class CommonProxy
     public Achievement achievementCoin, achievementThousand, achievementMillion, achievementBillion, achievementMaxed;
     public AchievementPage achievementPage;
     String commandBalance, commandRebalance, commandGive, commandSend;
+    public String commandReceivePackets;
 
     class ConfigLoader
     {
@@ -374,6 +375,11 @@ public class CommonProxy
             prop.comment = "Changes the command name. Leaves empty for the default value.";
             commandSend = prop.getString();
             if(commandSend.isEmpty()) commandSend = StatCollector.translateToLocal("command.send.name");
+
+            prop = source.get(category, "receivepackets", "");
+            prop.comment = "Changes the command name. Leaves empty for the default value.";
+            commandReceivePackets = prop.getString();
+            if(commandReceivePackets.isEmpty()) commandReceivePackets = "receivepackets";
 
 
             this.source.save();
