@@ -1053,8 +1053,13 @@ public class PropertiesDB implements CardDataBase
                 properties.put(key+".tile.x", te.xCoord);
                 properties.put(key+".tile.y", te.yCoord);
                 properties.put(key+".tile.z", te.zCoord);
-                properties.put(key+".tile.block", String.valueOf(GameData.getBlockRegistry().getNameForObject(te.getBlockType())));
-                properties.put(key+".tile.block.meta", te.getBlockMetadata());
+                try
+                {
+                    properties.put(key + ".tile.block", String.valueOf(GameData.getBlockRegistry().getNameForObject(te.getBlockType())));
+                    properties.put(key + ".tile.block.meta", te.getBlockMetadata());
+                }
+                catch (Exception ignored)
+                { }
             }
         }
     }
