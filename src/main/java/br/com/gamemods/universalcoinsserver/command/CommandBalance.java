@@ -11,9 +11,9 @@ import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.StatCollector;
-import scala.actors.threadpool.Arrays;
 
 import java.text.NumberFormat;
+import java.util.Arrays;
 import java.util.List;
 
 public class CommandBalance extends CommandBase
