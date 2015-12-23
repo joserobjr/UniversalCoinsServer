@@ -8,23 +8,32 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.*;
 import net.minecraft.world.WorldServer;
+import scala.actors.threadpool.Arrays;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class CommandSend extends CommandBase
 {
+    final String name;
+    final List aliases;
+
+    public CommandSend(String commandBalance)
+    {
+        String[] split = commandBalance.split("\\s*,\\s*");
+        this.name = split[0].trim();
+        if(name.isEmpty()) throw new IllegalArgumentException();
+        aliases = Arrays.asList(Arrays.copyOfRange(split, 1, split.length));
+    }
+
     @Override
     public String getCommandName()
     {
-        return StatCollector.translateToLocal("command.send.name");
+        return name;
     }
 
     @Override
     public List getCommandAliases()
     {
-        List<String> aliases = new ArrayList<>();
-        aliases.add("pay");
         return aliases;
     }
 

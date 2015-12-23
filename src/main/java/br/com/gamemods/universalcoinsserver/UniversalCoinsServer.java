@@ -91,11 +91,11 @@ public class UniversalCoinsServer
     @Mod.EventHandler
     public void serverStarting(FMLServerStartingEvent event)
     {
-        event.registerServerCommand(new CommandBalance());
-        event.registerServerCommand(new CommandGive());
+        event.registerServerCommand(new CommandBalance(proxy.commandBalance));
+        event.registerServerCommand(new CommandGive(proxy.commandGive));
         event.registerServerCommand(new CommandTake());
-        event.registerServerCommand(new CommandRebalance());
-        event.registerServerCommand(new CommandSend());
+        event.registerServerCommand(new CommandRebalance(proxy.commandRebalance));
+        event.registerServerCommand(new CommandSend(proxy.commandSend));
     }
 
     @Mod.EventHandler

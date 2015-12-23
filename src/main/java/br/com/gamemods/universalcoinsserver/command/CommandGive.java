@@ -7,15 +7,34 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.*;
 import net.minecraft.world.WorldServer;
+import scala.actors.threadpool.Arrays;
 
 import java.text.NumberFormat;
+import java.util.List;
 
 public class CommandGive extends CommandBase
 {
+    final String name;
+    final List aliases;
+
+    public CommandGive(String commandBalance)
+    {
+        String[] split = commandBalance.split("\\s*,\\s*");
+        this.name = split[0].trim();
+        if(name.isEmpty()) throw new IllegalArgumentException();
+        aliases = Arrays.asList(Arrays.copyOfRange(split, 1, split.length));
+    }
+
     @Override
     public String getCommandName()
     {
-        return StatCollector.translateToLocal("command.givecoins.name");
+        return name;
+    }
+
+    @Override
+    public List getCommandAliases()
+    {
+        return aliases;
     }
 
     @Override

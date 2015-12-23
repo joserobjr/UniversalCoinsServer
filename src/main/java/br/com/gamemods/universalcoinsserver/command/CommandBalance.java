@@ -11,15 +11,34 @@ import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.StatCollector;
+import scala.actors.threadpool.Arrays;
 
 import java.text.NumberFormat;
+import java.util.List;
 
 public class CommandBalance extends CommandBase
 {
+    final String name;
+    final List aliases;
+
+    public CommandBalance(String commandBalance)
+    {
+        String[] split = commandBalance.split("\\s*,\\s*");
+        this.name = split[0].trim();
+        if(name.isEmpty()) throw new IllegalArgumentException();
+        aliases = Arrays.asList(Arrays.copyOfRange(split, 1, split.length));
+    }
+
     @Override
     public String getCommandName()
     {
-        return StatCollector.translateToLocal("command.balance.name");
+        return name;
+    }
+
+    @Override
+    public List getCommandAliases()
+    {
+        return aliases;
     }
 
     @Override

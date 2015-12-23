@@ -16,6 +16,7 @@ import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.stats.Achievement;
+import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.AchievementPage;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
@@ -65,6 +66,7 @@ public class CommonProxy
     public boolean cardCheckBalance, cardDepositFromTransaction;
     public Achievement achievementCoin, achievementThousand, achievementMillion, achievementBillion, achievementMaxed;
     public AchievementPage achievementPage;
+    String commandBalance, commandRebalance, commandGive, commandSend;
 
     class ConfigLoader
     {
@@ -351,6 +353,28 @@ public class CommonProxy
             prop = source.get(category, "Properties Directory", new File(source.getConfigFile().getParent(), "UniversalCoins-database").getPath());
             prop.comment = "Directory where the properties database will be saved";
             propertiesDir = prop.getString();
+
+            category = "Commands";
+            prop = source.get(category, "balance", "");
+            prop.comment = "Changes the command name. Leaves empty for the default value. Add comma for aliases";
+            commandBalance = prop.getString();
+            if(commandBalance.isEmpty()) commandBalance = StatCollector.translateToLocal("command.balance.name");
+
+            prop = source.get(category, "rebalance", "");
+            prop.comment = "Changes the command name. Leaves empty for the default value.";
+            commandRebalance = prop.getString();
+            if(commandRebalance.isEmpty()) commandRebalance = StatCollector.translateToLocal("command.rebalance.name");
+
+            prop = source.get(category, "givecoins", "");
+            prop.comment = "Changes the command name. Leaves empty for the default value.";
+            commandGive = prop.getString();
+            if(commandGive.isEmpty()) commandGive = StatCollector.translateToLocal("command.givecoins.name");
+
+            prop = source.get(category, "send", "");
+            prop.comment = "Changes the command name. Leaves empty for the default value.";
+            commandSend = prop.getString();
+            if(commandSend.isEmpty()) commandSend = StatCollector.translateToLocal("command.send.name");
+
 
             this.source.save();
         }
