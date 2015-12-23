@@ -71,6 +71,7 @@ public class TileCardStation extends TileTransactionMachine
     private Runnable cardRemovalHook;
     public Runnable[] customButtonOperation;
     public String customAccountName;
+    private boolean fillingCoins = false;
 
     public TileCardStation()
     {
@@ -652,10 +653,22 @@ public class TileCardStation extends TileTransactionMachine
 
     public void fillCoinSlot()
     {
+        if(fillingCoins)
+            return;
+
         if(state.withdrawCoins && coins > 0)
         {
             int before = coins;
-            coins = UniversalCoinsServerAPI.addCoinsToSlot(this, coins, SLOT_COIN);
+            try
+            {
+                fillingCoins = true;
+                coins = UniversalCoinsServerAPI.addCoinsToSlot(this, coins, SLOT_COIN);
+            }
+            finally
+            {
+                fillingCoins = false;
+            }
+
             if(before != coins)
             {
                 worldObj.playSoundEffect(xCoord, yCoord, zCoord,
