@@ -105,7 +105,9 @@ public final class Transaction
     {
         if(operation != Operation.DEPOSIT_TO_ACCOUNT_FROM_MACHINE
             && operation != Operation.WITHDRAW_FROM_ACCOUNT_TO_MACHINE
-            && operation != Operation.TRANSFER_ACCOUNT)
+            && operation != Operation.TRANSFER_ACCOUNT
+            && operation != Operation.DEPOSIT_TO_ACCOUNT_BY_API
+            && operation != Operation.WITHDRAW_FROM_ACCOUNT_BY_API)
             throw new IllegalArgumentException();
 
         this.operator = operator;

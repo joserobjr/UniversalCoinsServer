@@ -143,6 +143,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                 if(machineEntity instanceof PlayerOwned)
                 {
                     UUID ownerId = ((PlayerOwned) machineEntity).getOwnerId();
+                    registerUser(ownerId);
                     if(ownerId != null)
                         pst.setString(9, ownerId.toString());
                     else
@@ -442,6 +443,11 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                     pst.setNull(4, Types.CHAR);
                     pst.setInt(5, blockOperatorId);
                 }
+                else
+                {
+                    pst.setNull(4, Types.CHAR);
+                    pst.setNull(5, Types.INTEGER);
+                }
                 ItemStack stack = transaction.getProduct();
                 if(stack != null)
                 {
@@ -665,24 +671,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                 } while (pst.executeQuery().next());
             }
 
-            boolean registerUser;
-            try(PreparedStatement pst = connection.prepareStatement(
-                    "SELECT `primary_account` FROM `user_data` WHERE `player_id`=?"
-            ))
-            {
-                pst.setString(1, playerId);
-                ResultSet result = pst.executeQuery();
-                registerUser = !result.next();
-            }
-
-            if(registerUser)
-                try(PreparedStatement pst = connection.prepareStatement(
-                        "INSERT INTO `user_data`(`player_id`) VALUES(?)"
-                ))
-                {
-                    pst.setString(1, playerId);
-                    pst.executeUpdate();
-                }
+            registerUser(playerUID);
 
             try (PreparedStatement pst = connection.prepareStatement(
                     "INSERT INTO `accounts`(`number`,`owner`,`name`,`primary`) VALUES(?,?,?,?)"
@@ -755,6 +744,28 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                     e.printStackTrace();
                 }
         }
+    }
+
+    private void registerUser(UUID playerUID) throws SQLException
+    {
+        boolean registerUser;
+        try(PreparedStatement pst = connection.prepareStatement(
+                "SELECT `primary_account` FROM `user_data` WHERE `player_id`=?"
+        ))
+        {
+            pst.setString(1, playerUID.toString());
+            ResultSet result = pst.executeQuery();
+            registerUser = !result.next();
+        }
+
+        if(registerUser)
+            try(PreparedStatement pst = connection.prepareStatement(
+                    "INSERT INTO `user_data`(`player_id`) VALUES(?)"
+            ))
+            {
+                pst.setString(1, playerUID.toString());
+                pst.executeUpdate();
+            }
     }
 
     @Nullable
