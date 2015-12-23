@@ -12,6 +12,13 @@ public class MobDropEventHandler
 {
     int mobDropChance, mobDropMax, enderDragonMultiplier;
 
+    public MobDropEventHandler(int mobDropChance, int mobDropMax, int enderDragonMultiplier)
+    {
+        this.mobDropChance = mobDropChance;
+        this.mobDropMax = mobDropMax;
+        this.enderDragonMultiplier = enderDragonMultiplier;
+    }
+
     @SubscribeEvent
     public void onEntityDrop(LivingDropsEvent event)
     {

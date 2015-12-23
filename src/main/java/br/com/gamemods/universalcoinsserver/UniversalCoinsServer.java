@@ -50,7 +50,7 @@ public class UniversalCoinsServer
 
         MinecraftForge.EVENT_BUS.register(new PlayerPickupEventHandler());
         if(proxy.configs.mobsDropCoins)
-            MinecraftForge.EVENT_BUS.register(new MobDropEventHandler());
+            MinecraftForge.EVENT_BUS.register(new MobDropEventHandler(proxy.configs.mobDropChance, proxy.configs.mobDropMax, proxy.configs.enderDragonMultiplier));
 
         network = NetworkRegistry.INSTANCE.newSimpleChannel("universalcoins");
         network.registerMessage(ButtonMessage.class, ButtonMessage.class, 0, Side.SERVER);
