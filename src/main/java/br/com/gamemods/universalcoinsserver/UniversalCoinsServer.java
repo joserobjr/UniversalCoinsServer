@@ -96,6 +96,7 @@ public class UniversalCoinsServer
         event.registerServerCommand(new CommandTake());
         event.registerServerCommand(new CommandRebalance(proxy.commandRebalance));
         event.registerServerCommand(new CommandSend(proxy.commandSend));
+        event.registerServerCommand(new CommandPackInventory());
     }
 
     @Mod.EventHandler
