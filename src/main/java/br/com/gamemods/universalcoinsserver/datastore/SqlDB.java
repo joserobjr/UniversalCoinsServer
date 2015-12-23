@@ -543,7 +543,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             try(PreparedStatement pst = connection.prepareStatement(
                     "SELECT `primary_account`, ac.name,ac.owner " +
                         "FROM `user_data` LEFT JOIN `accounts` AS ac ON ac.number=`primary_account` " +
-                        "WHERE `player_id`=?"
+                        "WHERE `player_id`=? AND `primary_account` IS NOT NULL"
             ))
             {
                 pst.setString(1, playerUID.toString());
