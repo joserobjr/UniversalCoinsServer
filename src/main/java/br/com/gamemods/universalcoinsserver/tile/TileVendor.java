@@ -979,6 +979,9 @@ public class TileVendor extends TileOwned
 
     public void buy(boolean all)
     {
+        // TODO Better fix
+        all = infinite? all : false;
+
         updateCards();
 
         Transaction.Operation operation = Transaction.Operation.BUY_FROM_MACHINE;
