@@ -54,7 +54,6 @@ public class TileVendor extends TileOwned
     public boolean infinite;
     public boolean sellToUser;
     public byte textColor;
-    public EntityPlayer opener;
     public String icon = "";
     private boolean[] buttonOwnerWithdraw = new boolean[5];
     private boolean[] buttonUserWithdraw = new boolean[5];
@@ -1374,7 +1373,7 @@ public class TileVendor extends TileOwned
     @Override
     public void setOpener(EntityPlayer opener)
     {
-        this.opener = opener;
+        super.setOpener(opener);
         updateCards();
         updateOperations();
     }
