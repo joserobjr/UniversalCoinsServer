@@ -14,7 +14,7 @@ public class BlockSafe extends BlockRotary
         setHardness(3.0F);
         setCreativeTab(creativeTabs);
         setResistance(30.0F);
-        setUnlocalizedName("blockSafe");
+        setBlockName("blockSafe");
     }
 
     @Override

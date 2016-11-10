@@ -25,7 +25,7 @@ public class BlockPackager extends BlockRotary
         setHardness(3.0F);
         setCreativeTab(creativeTabs);
         setResistance(30.0F);
-        setUnlocalizedName("blockPackager");
+        setBlockName("blockPackager");
     }
 
     @Override

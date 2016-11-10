@@ -614,7 +614,7 @@ public class TilePackager extends TileTransactionMachine
     @Override
     public void onDataPacket(NetworkManager net, S35PacketUpdateTileEntity pkt)
     {
-        readFromNBT(pkt.getNbtCompound());
+        readFromNBT(pkt.func_148857_g());
     }
 
     @Override
@@ -665,7 +665,7 @@ public class TilePackager extends TileTransactionMachine
     }
 
     @Override
-    public boolean isCustomInventoryName()
+    public boolean hasCustomInventoryName()
     {
         return false;
     }
@@ -684,11 +684,11 @@ public class TilePackager extends TileTransactionMachine
     }
 
     @Override
-    public void openChest()
+    public void openInventory()
     { }
 
     @Override
-    public void closeChest()
+    public void closeInventory()
     { }
 
     @Override

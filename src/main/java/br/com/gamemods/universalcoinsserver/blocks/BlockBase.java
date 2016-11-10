@@ -13,7 +13,7 @@ public class BlockBase extends Block
         setHardness(3.0F);
         setCreativeTab(creativeTabs);
         setResistance(30.0F);
-        setTextureName("universalcoins:blockBase");
-        setUnlocalizedName("blockBase");
+        setBlockTextureName("universalcoins:blockBase");
+        setBlockName("blockBase");
     }
 }

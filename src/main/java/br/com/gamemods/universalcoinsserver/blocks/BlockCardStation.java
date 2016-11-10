@@ -22,9 +22,9 @@ public class BlockCardStation extends BlockRotary
         super(new Material(MapColor.stoneColor));
         setHardness(3.0F);
         setCreativeTab(creativeTabs);
-        setTextureName("universalcoins:blockTradeStation1");
+        setBlockTextureName("universalcoins:blockTradeStation1");
         setResistance(30.0F);
-        setUnlocalizedName("blockCardStation");
+        setBlockName("blockCardStation");
     }
 
     @Override

@@ -129,7 +129,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
             }
             else
             {
-                pst.setInt(2, machineEntity.getWorld().provider.dimensionId);
+                pst.setInt(2, machineEntity.getWorldObj().provider.dimensionId);
                 String block = GameData.getBlockRegistry().getNameForObject(machineEntity.getBlockType());
 
                 if(block != null)
@@ -191,7 +191,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                 pst.setNull(field++, machineEntity.zCoord);
                 if(worldObj)
                 {
-                    pst.setInt(field++, machineEntity.getWorld().provider.dimensionId);
+                    pst.setInt(field++, machineEntity.getWorldObj().provider.dimensionId);
                     String block = GameData.getBlockRegistry().getNameForObject(machineEntity.getBlockType());
 
                     if (block != null)
@@ -301,7 +301,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                     String type = GameData.getItemRegistry().getNameForObject(stack.getItem());
                     if(type == null) type = stack.getItem().getClass().getName();
                     pst.setString(6, type);
-                    pst.setInt(7, stack.getMetadata());
+                    pst.setInt(7, stack.getItemDamage());
                     pst.setInt(8, stack.stackSize);
                     if(stack.stackTagCompound != null)
                         pst.setString(9, stack.stackTagCompound.toString());
@@ -454,7 +454,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                     String type = GameData.getItemRegistry().getNameForObject(stack.getItem());
                     if(type == null) type = stack.getItem().getClass().getName();
                     pst.setString(6, type);
-                    pst.setInt(7, stack.getMetadata());
+                    pst.setInt(7, stack.getItemDamage());
                     pst.setInt(8, stack.stackSize);
                     if(stack.stackTagCompound != null)
                         pst.setString(9, stack.stackTagCompound.toString());
@@ -475,7 +475,7 @@ public class SqlDB extends AbstractSQL<AbstractSQL.SqlAccount>
                     String type = GameData.getItemRegistry().getNameForObject(stack.getItem());
                     if(type == null) type = stack.getItem().getClass().getName();
                     pst.setString(10, type);
-                    pst.setInt(11, stack.getMetadata());
+                    pst.setInt(11, stack.getItemDamage());
                     pst.setInt(12, stack.stackSize);
                     if(stack.stackTagCompound != null)
                         pst.setString(13, stack.stackTagCompound.toString());

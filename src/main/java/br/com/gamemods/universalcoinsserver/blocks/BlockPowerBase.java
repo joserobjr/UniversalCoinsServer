@@ -16,8 +16,8 @@ public class BlockPowerBase extends BlockContainer
         setHardness(3.0F);
         setCreativeTab(tabs);
         setResistance(30.0F);
-        setTextureName("universalcoins:blockPowerBase");
-        setUnlocalizedName("blockPowerBase");
+        setBlockTextureName("universalcoins:blockPowerBase");
+        setBlockName("blockPowerBase");
     }
 
     @Override

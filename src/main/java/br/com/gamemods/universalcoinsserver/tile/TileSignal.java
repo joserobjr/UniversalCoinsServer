@@ -369,7 +369,7 @@ public class TileSignal extends TileOwned
     }
 
     @Override
-    public boolean isCustomInventoryName()
+    public boolean hasCustomInventoryName()
     {
         return false;
     }
@@ -388,11 +388,11 @@ public class TileSignal extends TileOwned
     }
 
     @Override
-    public void openChest()
+    public void openInventory()
     {}
 
     @Override
-    public void closeChest()
+    public void closeInventory()
     {}
 
     @Override
@@ -412,6 +412,6 @@ public class TileSignal extends TileOwned
     @Override
     public void onDataPacket(NetworkManager net, S35PacketUpdateTileEntity pkt)
     {
-        readFromNBT(pkt.getNbtCompound());
+        readFromNBT(pkt.func_148857_g());
     }
 }

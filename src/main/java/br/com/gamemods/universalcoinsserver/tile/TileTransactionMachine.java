@@ -106,7 +106,7 @@ public abstract class TileTransactionMachine extends TileEntity implements Machi
     }
 
     @Override
-    public int[] getSlotsForFace(int p_94128_1_)
+    public int[] getAccessibleSlotsFromSide(int p_94128_1_)
     {
         return new int[0];
     }

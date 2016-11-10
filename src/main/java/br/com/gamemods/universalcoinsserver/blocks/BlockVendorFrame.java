@@ -18,8 +18,8 @@ public class BlockVendorFrame extends BlockVendor
     {
         super(new Material(MapColor.woodColor));
         setHardness(1.0f);
-        setUnlocalizedName("blockVendorFrame");
-        setTextureName("minecraft:planks_oak");
+        setBlockName("blockVendorFrame");
+        setBlockTextureName("minecraft:planks_oak");
         setResistance(6000.0F);
         setBlockBounds(0, 0, 0, 0, 0, 0);
         setCreativeTab(creativeTabs);

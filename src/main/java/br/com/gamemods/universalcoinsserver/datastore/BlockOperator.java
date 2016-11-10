@@ -37,7 +37,7 @@ public abstract class BlockOperator implements Operator
         this.z = tileEntity.zCoord;
         if(tileEntity.hasWorldObj())
         {
-            this.dim = tileEntity.getWorld().provider.dimensionId;
+            this.dim = tileEntity.getWorldObj().provider.dimensionId;
             this.blockId = GameData.getBlockRegistry().getNameForObject(tileEntity.getBlockType());
             this.blockMeta = tileEntity.getBlockMetadata();
         }

@@ -322,7 +322,7 @@ public class NbtDB extends AbstractDB<AbstractDB.Account>
     {
         WorldData worldData = sync(getWorld());
         //noinspection unchecked
-        Set<String> keySet = worldData.data.getKeySet();
+        Set<String> keySet = worldData.data.func_150296_c();
 
         ArrayList<PlayerData> list = new ArrayList<>();
 
@@ -355,7 +355,7 @@ public class NbtDB extends AbstractDB<AbstractDB.Account>
     {
         WorldData worldData = sync(getWorld());
         //noinspection unchecked
-        Set<String> keySet = worldData.data.getKeySet();
+        Set<String> keySet = worldData.data.func_150296_c();
 
         Pattern pattern = Pattern.compile("^[0-9]+$");
 

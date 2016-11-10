@@ -766,7 +766,7 @@ public class PropertiesDB implements CardDataBase
         if(machine instanceof TileEntity)
         {
             TileEntity te = (TileEntity)machine;
-            World worldObj = te.getWorld();
+            World worldObj = te.getWorldObj();
             sb.append(" | DIM:").append(worldObj==null?"?":worldObj.provider.dimensionId)
                     .append(" | X:").append(te.xCoord).append(" | Y:").append(te.yCoord).append(" | Z:").append(te.zCoord)
                     .append(" | Block:").append(worldObj==null?"?":GameData.getBlockRegistry().getNameForObject(te.getBlockType()))
@@ -1048,7 +1048,7 @@ public class PropertiesDB implements CardDataBase
             TileEntity te = machine.getMachineEntity();
             if(te != null)
             {
-                World worldObj = te.getWorld();
+                World worldObj = te.getWorldObj();
                 properties.put(key+".tile.dim", worldObj==null?"null":worldObj.provider.dimensionId);
                 properties.put(key+".tile.x", te.xCoord);
                 properties.put(key+".tile.y", te.yCoord);
@@ -1070,7 +1070,7 @@ public class PropertiesDB implements CardDataBase
         {
             properties.put(key, String.valueOf(stack));
             properties.put(key+".type", String.valueOf(GameData.getItemRegistry().getNameForObject(stack.getItem())));
-            properties.put(key+".meta", stack.getMetadata());
+            properties.put(key+".meta", stack.getItemDamage());
             properties.put(key+".amount", stack.stackSize);
             if(stack.hasTagCompound())
                 properties.put(key+".tags", stack.stackTagCompound.toString());
