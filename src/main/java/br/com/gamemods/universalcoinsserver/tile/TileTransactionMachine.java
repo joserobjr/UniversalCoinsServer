@@ -6,12 +6,14 @@ import br.com.gamemods.universalcoinsserver.datastore.Machine;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
+import net.minecraft.inventory.ISidedInventory;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 
 import java.util.UUID;
 
-public abstract class TileTransactionMachine extends TileEntity implements Machine, IInventory
+public abstract class TileTransactionMachine extends TileEntity implements Machine, ISidedInventory
 {
     private UUID machineId;
     public EntityPlayer opener;
@@ -101,5 +103,23 @@ public abstract class TileTransactionMachine extends TileEntity implements Machi
     {
         if(player.isEntityEqual(opener))
             opener = null;
+    }
+
+    @Override
+    public int[] getSlotsForFace(int p_94128_1_)
+    {
+        return new int[0];
+    }
+
+    @Override
+    public boolean canInsertItem(int p_102007_1_, ItemStack p_102007_2_, int p_102007_3_)
+    {
+        return false;
+    }
+
+    @Override
+    public boolean canExtractItem(int p_102008_1_, ItemStack p_102008_2_, int p_102008_3_)
+    {
+        return false;
     }
 }
