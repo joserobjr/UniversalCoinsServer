@@ -1176,7 +1176,7 @@ public class PropertiesDB implements CardDataBase
 
         File namesDir = new File(players, "names");
 
-        if(!namesDir.mkdirs())
+        if(!namesDir.isDirectory() && !namesDir.mkdirs())
             throw new DataStoreException("Failed to create dir "+namesDir.getAbsolutePath());
 
         if(previous != null && !previous.isEmpty())
