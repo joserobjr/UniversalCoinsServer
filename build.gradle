@@ -17,17 +17,16 @@ buildscript {
 
 apply plugin: 'forge'
 
-version = "1.7.10-1.6.38-gamemods"
+version = "1.7.10-1.6.38-gamemods-2-SNAPSHOT"
 group= "br.com.gamemods.universalcoinsserver" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
-//noinspection GroovyUnusedAssignment
 archivesBaseName = "UniversalCoinsServer"
 
-sourceCompatibility = 1.7
-targetCompatibility = 1.7
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 minecraft {
     version = "1.7.10-10.13.4.1566-1.7.10"
-    runDir = "eclipse"
+    runDir = "run"
 }
 
 dependencies {
