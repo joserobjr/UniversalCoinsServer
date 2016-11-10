@@ -25,8 +25,8 @@ public class BlockSignal extends BlockOwned
         setHardness(3.0F);
         setCreativeTab(tabs);
         setResistance(30.0F);
-        setBlockTextureName("universalcoins:blockSignal");
-        setBlockName("blockSignal");
+        setTextureName("universalcoins:blockSignal");
+        setUnlocalizedName("blockSignal");
     }
 
     @Override

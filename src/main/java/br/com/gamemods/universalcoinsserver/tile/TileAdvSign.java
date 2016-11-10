@@ -83,7 +83,7 @@ public class TileAdvSign extends TileEntitySign implements PlayerOwned
             if(lines.length < i || lines[i] == null)
                 signText[i] = "";
             else
-                signText[i] = IChatComponent.Serializer.func_150696_a(lines[i]);
+                signText[i] = IChatComponent.Serializer.componentToJson(lines[i]);
         }
     }
 }

@@ -23,7 +23,7 @@ public class BlockVendor extends BlockOwned
     public BlockVendor(CreativeTabs creativeTabs)
     {
         super(Material.glass);
-        setBlockName("blockVendor");
+        setUnlocalizedName("blockVendor");
         setStepSound(soundTypeGlass);
         setCreativeTab(creativeTabs);
         setHardness(0.3F);
@@ -137,7 +137,7 @@ public class BlockVendor extends BlockOwned
             world.markBlockForUpdate(x,y,z);
         }
 
-        world.setBlockMetadataWithNotify(x, y, z, stack.getItemDamage(), 2);
+        world.setBlockMetadataWithNotify(x, y, z, stack.getMetadata(), 2);
     }
 
     @Override

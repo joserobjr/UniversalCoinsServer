@@ -15,8 +15,8 @@ public class BlockPowerReceiver extends BlockContainer
         setHardness(3.0F);
         setCreativeTab(creativeTabs);
         setResistance(30.0F);
-        setBlockTextureName("universalcoins:blockPowerReceiver");
-        setBlockName("blockPowerReceiver");
+        setTextureName("universalcoins:blockPowerReceiver");
+        setUnlocalizedName("blockPowerReceiver");
     }
 
     @Override

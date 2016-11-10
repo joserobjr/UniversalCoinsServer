@@ -18,7 +18,7 @@ public class BlockTradeStation extends BlockContainer
         setHardness(3.0f);
         setCreativeTab(creativeTabs);
         setResistance(6000.0F);
-        setBlockName("blockTradeStation");
+        setUnlocalizedName("blockTradeStation");
     }
 
     @Override

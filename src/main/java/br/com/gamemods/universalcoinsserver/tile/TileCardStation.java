@@ -788,7 +788,7 @@ public class TileCardStation extends TileTransactionMachine
     }
 
     @Override
-    public boolean hasCustomInventoryName()
+    public boolean isCustomInventoryName()
     {
         return false;
     }
@@ -807,11 +807,11 @@ public class TileCardStation extends TileTransactionMachine
     }
 
     @Override
-    public void openInventory()
+    public void openChest()
     { }
 
     @Override
-    public void closeInventory()
+    public void closeChest()
     { }
 
     @Override

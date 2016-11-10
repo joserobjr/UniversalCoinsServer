@@ -239,7 +239,7 @@ public class TileVendor extends TileOwned
     @Override
     public void onDataPacket(NetworkManager net, S35PacketUpdateTileEntity pkt)
     {
-        readFromNBT(pkt.func_148857_g());
+        readFromNBT(pkt.getNbtCompound());
     }
 
     @Override
@@ -547,7 +547,7 @@ public class TileVendor extends TileOwned
     }
 
     @Override
-    public boolean hasCustomInventoryName()
+    public boolean isCustomInventoryName()
     {
         return false;
     }
@@ -566,13 +566,13 @@ public class TileVendor extends TileOwned
     }
 
     @Override
-    public void openInventory()
+    public void openChest()
     {
 
     }
 
     @Override
-    public void closeInventory()
+    public void closeChest()
     {
 
     }

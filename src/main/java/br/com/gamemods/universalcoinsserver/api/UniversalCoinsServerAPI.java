@@ -733,7 +733,7 @@ public class UniversalCoinsServerAPI
     {
         return !(stack == null || otherStack == null)
                 && stack.stackSize > 0 && otherStack.stackSize > 0
-                && stack.getItem() == otherStack.getItem() && stack.getItemDamage() == otherStack.getItemDamage()
+                && stack.getItem() == otherStack.getItem() && stack.getMetadata() == otherStack.getMetadata()
                 && ItemStack.areItemStackTagsEqual(stack, otherStack);
     }
 
@@ -761,7 +761,7 @@ public class UniversalCoinsServerAPI
                     amount = drop.stackSize;
                 drop.stackSize -= amount;
 
-                item = new EntityItem(world, x + xRand, y + yRand, z + zRand, new ItemStack(drop.getItem(), amount, drop.getItemDamage()));
+                item = new EntityItem(world, x + xRand, y + yRand, z + zRand, new ItemStack(drop.getItem(), amount, drop.getMetadata()));
                 item.motionX = (float)random.nextGaussian() * 0.05F;
                 item.motionY = (float)random.nextGaussian() * 0.05F + 0.2F;
                 item.motionZ = (float)random.nextGaussian() * 0.05F;

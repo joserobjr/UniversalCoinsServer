@@ -31,7 +31,7 @@ public class PlayerSendPackage extends Event
         this.blockX = packager.xCoord;
         this.blockY = packager.yCoord;
         this.blockZ = packager.yCoord;
-        this.blockWorld = packager.getWorldObj();
+        this.blockWorld = packager.getWorld();
     }
 
     public ItemStack getPackage()
