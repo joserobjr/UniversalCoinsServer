@@ -1005,7 +1005,7 @@ public class TileVendor extends TileOwned
         ItemStack output = inventory[SLOT_OUTPUT];
         if(output != null)
         {
-            if (UniversalCoinsServerAPI.matches(output, trade) || output.stackSize + trade.stackSize > output.getMaxStackSize())
+            if (!UniversalCoinsServerAPI.matches(output, trade) || output.stackSize + trade.stackSize > output.getMaxStackSize())
             {
                 buyButtonActive = false;
                 markDirty();
